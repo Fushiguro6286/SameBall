@@ -284,6 +284,13 @@ export const en = {
     spoilersBlocked: "Spoilers blocked",
     roars: "Roars",
     spoilersHelp: "Messages that arrived locked and then revealed on schedule, not through spoil me.",
+    lagSpread: "Median lag spread per room",
+    dau: "Daily active users, last 14 days (IST)",
+    dauShort: "Active users",
+    day: "Day",
+    table: "Show as a table",
+    sourceServer: "Messages and roars are counted on our server from Nexconn's delivery webhooks.",
+    sourceClient: "Messages and roars are counted from in-app events.",
   },
 };
 

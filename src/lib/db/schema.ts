@@ -78,3 +78,17 @@ export const reports = pgTable("reports", {
   reason: text("reason"),
   createdAt: ts("created_at"),
 });
+
+/** Server-side traction source: one row per Nexconn message:send webhook (deduped by message id). */
+export const ncMessages = pgTable(
+  "nc_messages",
+  {
+    messageId: text("message_id").primaryKey(),
+    userId: text("user_id").notNull(),
+    channelId: text("channel_id").notNull(),
+    messageType: text("message_type").notNull(),
+    lag: integer("lag"), // sender's lag stamp, when the content carries one
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [index("nc_messages_sent_idx").on(t.sentAt), index("nc_messages_channel_idx").on(t.channelId)],
+);

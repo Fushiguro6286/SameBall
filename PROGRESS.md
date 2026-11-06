@@ -20,13 +20,36 @@ Scaffold (Next.js 16.4.5, TS strict, Tailwind 4), Nexconn SDK 26.2.1 verified ag
 ### Verified live (dev server + real Nexconn, test users)
 Session/token/join, room create, rejoin, bad name 400, unknown room 404; browser SDK connects; server-sent message from a faster feed arrived locked ("unlocks in 17s"), content absent from the DOM, tab title "(1 locked)", revealed on schedule; message sent from the browser carried its lag stamp through Nexconn (locked for a slower viewer); history reload; SB:Lag send; metrics rows flagged test.
 
+### Phase 2 (P1), Nov 6
+- **Quick-chat chips** per sport (`QUICK_CHIPS` in `config.ts`); normal lag-stamped text, weigh extra in Hype.
+- **Hype Radar** (`timing/hype.ts`, tested): heat from locked messages revealing in the next 45 s; distinct senders weigh most. Heartbeat strip above the input, "👀 something's coming in Ns", vibration, Suspense toggle in the room menu. The store hands the UI numbers only, never locked content.
+- **Stadium Roar**: hold-to-roar button (SB:Roar every 1.5 s, intensity grows with hold), procedural Web Audio crowd (`audio/crowd.ts`) plays when roars reveal for *me*, floodlight glow, "Tap to turn on stadium sound", sound toggle. Old roars (history) stay silent.
+- **Judge Mode** (`/try`): one tap creates a private room with bots Arjun 📺 and Meera 🏟️ (real Nexconn users, `is_bot`). "Start the over" posts a First ball SB:Anchor from a bot; the mock scoreboard plays at the visitor's own lag; `/api/try/step` sends each scripted bot message once (atomic bitmask), never early. Coach marks, held-back summary, second window on the TV feed (flagged test). Try rooms (`kind='try'`) are left out of the /stats room count.
+- **Lag Leaderboard + watching now**: badges relative to the fastest member; full list sheet. Each client announces its lag once per connection. "Watching now" = `/api/presence` heartbeat (Nexconn has no channel presence).
+- **Sync Check** (`timing/sync-solver.ts`, tested): tap NOW at a named moment; first tap per person, outliers >180 s from the median dropped; "Apply new lag: N s?"; never silent.
+- **Scheduled + featured rooms, admin**: optional start time, countdown, Google Calendar / .ics; featured list on the landing page; `/admin` (Bearer `ADMIN_TOKEN`) features rooms and posts anchors (SameBall host bot). Revealed anchors show as timeline dividers.
+- **Safety**: report + block (block hides messages, hype and roars); room creator can mute 1 h or remove via the Server API; removed members can't rejoin.
+- **Security fix (guest keys)**: guest ids are public (Nexconn sender ids, `?ref=` links) but were the only credential, so a room member could get a chat token as someone else or delete their data. The server now issues `key = HMAC(app secret, guestId)`; once a profile is keyed every sensitive call needs it. Pre-key guests get a key on their next visit.
+- **Webhook metrics**: `/api/nexconn/webhook` verifies the signature, rejects timestamps >5 min old (the signature doesn't cover the body), stores group-channel messages deduped by message id. `/stats` uses these counts once rows exist, plus median lag spread per room and a 14-day daily-active chart.
+- Migrations 0001–0004 applied to Neon (all additive).
+
+### Verified live in Phase 2 (dev server + real Nexconn, test users)
+Judge Mode API (create, join, start idempotent, steps once/early 425/non-member 403, bot text + bot roar accepted by Nexconn); presence; admin (401 without token, feature on/off, anchor posted, try rooms 404, start-time bounds); guest keys (reuse without/with wrong key 401, legacy guest upgraded once); moderation (non-owner 403, mute and remove accepted by Nexconn, removed member gets 403 on rejoin); report; webhook (signed 204, retry deduped, bad/stale signature 401).
+**Not verified in a browser** (the Chrome extension wasn't connected): the new room UI (chips, Hype strip, roar button and audio, Judge Mode panel, leaderboard, Sync Check card, start banner). Needs the phone checklist.
+
 ## Next
-- Two-phone test checklist (you), then Phase 2 (P1).
+- You: phone test of the P1 UI (checklist in chat), Nexconn Console settings below, then Phase 3 (P2).
+
+## Console settings to switch on (you)
+- Webhooks: URL `https://sameball.vercel.app/api/nexconn/webhook`, event "message send" (leave "Include Server API Messaging" off so bots stay out).
+- Profanity filter for chat messages.
+- Group Channels → "Enable pre-join history access by new member".
 
 ## Known issues / notes
 - An unknown room code shows the 404 page with HTTP 200 (streamed page). Cosmetic.
 - Server-API messages don't appear in the *sender's own* history (no echo). Only affects bots, which never view chat.
-- Clock offset is measured against our server; message times come from Nexconn's server. Both are NTP-synced, so the error should be tens of ms. Could refine later using own-message send round trips.
-- "Try it in 30 seconds" button is hidden until Judge Mode (P1) exists.
-- `/stats` shows totals only; the daily-active chart and median lag spread come with P1 webhooks.
-- Nexconn error `2007`: a dev-mode app caps registered users at 100. Check your app's environment in the Console before inviting real users.
+- Clock offset is measured against our server; message times come from Nexconn's server. Both are NTP-synced, so the error should be tens of ms.
+- Nexconn error `2007`: a dev-mode app caps registered users at 100. Each guest, bot and Judge Mode second window counts. Check your app's environment in the Console before inviting real users.
+- The dev server sometimes keeps stale modules after edits (Turbopack on Windows); restart it if an API behaves like old code.
+- Test rooms created during P1 checks (all by test users, excluded from /stats): 27299A (try), H5D4ZH, UA6F4H, VYQTGE, C7QAHC.
+- Removed members still count toward `member_count` (overflow happens slightly early). Harmless at our scale.

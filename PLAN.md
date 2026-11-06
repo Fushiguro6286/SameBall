@@ -59,3 +59,9 @@ Note: the docs say `result.status` is a number, but the live API returned the st
 - Group size: the status-code page says 3,000 per group; we cap at 300 (Free plan per the brief) and also overflow on error `25411`.
 - **Risk:** error `2007` = "registered user count exceeded (100 in dev, or production without a paid IM plan)". Each guest is a registered user. Please check whether the app is in development or production mode in the Console.
 - Next 16 template enables `cacheComponents`: route-segment configs (`dynamic`, `revalidate`) are not allowed; use `connection()` and Suspense instead.
+
+## Found during Phase 2 (Nov 6)
+
+- Webhook docs (`/platform-chat-api/webhook/message/send`): data items carry `userId`, `channelId`, `channelType` (3 = group), `messageType`, `content` (JSON **string**), `messageId`, `time` (ms), `os`. Signature = sha1(AppSecret + Nonce + Timestamp): the **body is not signed**, so we also reject timestamps older than 5 min and dedupe by `messageId`. Any 2xx = success; non-2xx retried up to 2 more times.
+- `/v4/group-channel/user/mute-list/add` `{ channelId, userIds, durationMinutes }` returned code 0 live.
+- Server-API custom messages (SB:Roar, SB:Anchor) are accepted with `content` = JSON string of our payload.
