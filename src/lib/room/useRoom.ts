@@ -7,7 +7,7 @@ import { track } from "../client/metrics";
 import { saveRoomPrefs } from "../client/storage";
 import { observe, type Observation } from "../timing/autosync";
 import { measureOffset } from "../timing/clock";
-import { LIVE_MAX_LAG_MS, MAX_LAG_MS, isChat, matchTime, revealAt, type ChatMsg } from "../timing/engine";
+import { LIVE_MAX_LAG_MS, MAX_LAG_MS, isChat, isLocked, matchTime, revealAt, type ChatMsg } from "../timing/engine";
 import type { Pending } from "../timing/hype";
 import type { Tap } from "../timing/sync-solver";
 import { callsOf, type CallPoints, type CallState } from "../timing/callit";
@@ -427,6 +427,19 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
   const hostOp = useCallback((op: "pin" | "slow" | "hide" | "quiet", p: { id?: string; secs?: number; on?: boolean } = {}) => sendSb("host", { op, ...p }), [sendSb]);
   const answerCall = useCallback((callId: string, answer: number) => sendSb("callresult", { callId, answer }), [sendSb]);
 
+  /** Series league: a deeper page of history (kept out of the store) plus what the store has, and a reveal check for both. */
+  const loadDeep = useCallback(async () => {
+    const st = storeRef.current;
+    const tr = transportRef.current;
+    if (!st || !tr) throw new Error("not connected");
+    const byId = new Map(st.all().map((m) => [m.id, m]));
+    for (const m of (await tr.loadHistory(HISTORY_PAGES_REPLAY)).map(parseIncoming)) if (m && !byId.has(m.id)) byId.set(m.id, m);
+    const now = nowRef.current();
+    const lag = st.effectiveLag();
+    const isRevealed = (id: string) => (st.get(id) ? st.isRevealed(id) : ((m) => !!m && !isLocked(m, s.guestId, lag, now))(byId.get(id)));
+    return { msgs: [...byId.values()], isRevealed };
+  }, [s.guestId]);
+
   const syncTap = useCallback(
     async (checkId: string) => {
       const store = storeRef.current;
@@ -487,6 +500,9 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     pickCall,
     answerCall,
     hostOp,
+    loadDeep,
+    /** Any match marker (end of match, new series). */
+    postAnchor: endMatch,
     /** Drop recalled messages locally right away (others get Nexconn's delete event or the host's hide op). */
     removeMsgs: (ids: string[]) => storeRef.current?.remove(ids),
     setLag,

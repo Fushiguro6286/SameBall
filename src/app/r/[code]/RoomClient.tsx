@@ -16,6 +16,7 @@ import { LangToggle } from "@/components/Lang";
 import { RoarButton } from "@/components/RoarButton";
 import { StartBanner } from "@/components/StartBanner";
 import { CallCard, CallStartSheet } from "@/components/CallIt";
+import { LeagueSheet } from "@/components/League";
 import { MomentCard } from "@/components/MomentCard";
 import { NexconnBadge } from "@/components/NexconnBadge";
 import { PauseBar } from "@/components/PauseBar";
@@ -339,6 +340,7 @@ function RoomView({
   const [waveSeen, setWaveSeen] = useState<string | null>(null);
   const [cardSeen, setCardSeen] = useState<string | null>(null);
   const [hostTarget, setHostTarget] = useState<ViewItem | null>(null);
+  const [leagueOpen, setLeagueOpen] = useState(false);
   const [hostNote, setHostNote] = useState<string | null>(null);
   /** Observation count when the auto-sync hint was dismissed; it returns only after new evidence. */
   const [calDismissedAt, setCalDismissedAt] = useState(0);
@@ -769,6 +771,11 @@ function RoomView({
               {t.call.menu}
             </button>
           )}
+          {FEATURES.seriesLeague && FEATURES.callIt && !isTry && !replay && (
+            <button onClick={() => (setMenuOpen(false), setLeagueOpen(true))} className="rounded-2xl border border-line bg-surface-2 px-4 py-3 text-left">
+              {t.league.menu}
+            </button>
+          )}
           {catchup && session.key && (
             <button onClick={() => (setMenuOpen(false), setCatchupOpen(true))} className="rounded-2xl border border-line bg-surface-2 px-4 py-3 text-left">
               {t.catchup.menu}
@@ -926,6 +933,18 @@ function RoomView({
             </div>
           )}
         </Sheet>
+      )}
+
+      {FEATURES.seriesLeague && FEATURES.callIt && !isTry && !replay && (
+        <LeagueSheet
+          open={leagueOpen}
+          onClose={() => setLeagueOpen(false)}
+          load={room.loadDeep}
+          myId={session.guestId}
+          ownerId={ownerId}
+          isOwner={isOwner}
+          onStartSeries={room.postAnchor}
+        />
       )}
 
       <SyncStartSheet open={syncOpen} onClose={() => setSyncOpen(false)} onStart={room.startSyncCheck} />

@@ -184,6 +184,19 @@ export const hi: Dict = {
     dismiss: "हटाएँ",
   },
 
+  league: {
+    menu: "🏆 सीरीज़ लीग",
+    title: "सीरीज़ लीग",
+    loading: "इस रूम के हर Call it के पॉइंट जोड़ रहे हैं…",
+    series: (name: string) => `सीरीज़: ${name}। शुरू होने के बाद के हर मैच के Call it पॉइंट।`,
+    noSeries: "इस रूम के अब तक के हर मैच के Call it पॉइंट।",
+    champion: (who: string, series: string, pts: number) => `🏆 ${series ? `${series} के ` : ""}चैंपियन: ${who}, ${pts} पॉइंट`,
+    empty: "अभी कोई पॉइंट नहीं। मैच के दौरान Call it शुरू करें।",
+    help: "पॉइंट तभी गिने जाते हैं जब हर जवाब आपकी स्क्रीन तक पहुँच जाए। खेलना हमेशा मुफ़्त है।",
+    newSeries: "नई सीरीज़ का नाम (जैसे India v NZ ODIs)",
+    start: "सीरीज़ शुरू करें",
+  },
+
   creator: {
     badge: "🎙️ क्रिएटर रूम",
     toggle: "क्रिएटर रूम",

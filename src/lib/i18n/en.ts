@@ -181,6 +181,19 @@ export const en = {
     dismiss: "Dismiss",
   },
 
+  league: {
+    menu: "🏆 Series league",
+    title: "Series league",
+    loading: "Adding up every Call it in this room…",
+    series: (name: string) => `Series: ${name}. Call it points from every match since it started.`,
+    noSeries: "Call it points from every match in this room so far.",
+    champion: (who: string, series: string, pts: number) => `🏆 Champion${series ? ` of ${series}` : ""}: ${who} with ${pts} points`,
+    empty: "No points yet. Start a Call it during the match.",
+    help: "Points only count once each answer has reached your screen. Free to play, always.",
+    newSeries: "New series name (e.g. India v NZ ODIs)",
+    start: "Start series",
+  },
+
   creator: {
     badge: "🎙️ Creator room",
     toggle: "Creator room",
