@@ -17,6 +17,7 @@ import { RoarButton } from "@/components/RoarButton";
 import { StartBanner } from "@/components/StartBanner";
 import { CallCard, CallStartSheet } from "@/components/CallIt";
 import { LeagueSheet } from "@/components/League";
+import { HuddleSheet } from "@/components/Huddle";
 import { MomentCard } from "@/components/MomentCard";
 import { NexconnBadge } from "@/components/NexconnBadge";
 import { PauseBar } from "@/components/PauseBar";
@@ -341,6 +342,7 @@ function RoomView({
   const [cardSeen, setCardSeen] = useState<string | null>(null);
   const [hostTarget, setHostTarget] = useState<ViewItem | null>(null);
   const [leagueOpen, setLeagueOpen] = useState(false);
+  const [huddleOpen, setHuddleOpen] = useState(false);
   const [hostNote, setHostNote] = useState<string | null>(null);
   /** Observation count when the auto-sync hint was dismissed; it returns only after new evidence. */
   const [calDismissedAt, setCalDismissedAt] = useState(0);
@@ -779,6 +781,11 @@ function RoomView({
               {t.call.menu}
             </button>
           )}
+          {FEATURES.huddle && !isTry && !replay && (
+            <button onClick={() => (setMenuOpen(false), setHuddleOpen(true))} className="rounded-2xl border border-line bg-surface-2 px-4 py-3 text-left">
+              {t.huddle.menu}
+            </button>
+          )}
           {FEATURES.seriesLeague && FEATURES.callIt && !isTry && !replay && (
             <button onClick={() => (setMenuOpen(false), setLeagueOpen(true))} className="rounded-2xl border border-line bg-surface-2 px-4 py-3 text-left">
               {t.league.menu}
@@ -955,6 +962,9 @@ function RoomView({
         />
       )}
 
+      {FEATURES.huddle && (
+        <HuddleSheet open={huddleOpen} onClose={() => setHuddleOpen(false)} members={boardEntries} myId={session.guestId} onSync={() => setLagOpen(true)} />
+      )}
       <SyncStartSheet open={syncOpen} onClose={() => setSyncOpen(false)} onStart={room.startSyncCheck} />
       {FEATURES.callIt && <CallStartSheet open={callOpen} onClose={() => setCallOpen(false)} sport={sport} onStart={room.startCall} />}
 

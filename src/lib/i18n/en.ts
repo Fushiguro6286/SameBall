@@ -181,6 +181,17 @@ export const en = {
     dismiss: "Dismiss",
   },
 
+  huddle: {
+    menu: "🎧 Huddle",
+    title: "Huddle",
+    alone: "Huddle needs at least two people in the room.",
+    open: "Everyone's screen is within 5 seconds. Safe to talk without spoilers.",
+    locked: (s: number) => `Locked. Your squad's screens are ${s}s apart. Huddle opens when everyone is within 5 seconds.`,
+    behind: (s: number) => `${s}s behind`,
+    ahead: (s: number) => `${s}s ahead`,
+    sync: "Fix my delay",
+    voiceSoon: "Voice calls come with Nexconn Call. Until then, the gate tells you when it's safe to phone each other.",
+  },
   score: {
     label: "Score on your screen",
     help: "Held back by your delay, so it never runs ahead of your TV.",
