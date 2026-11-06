@@ -31,7 +31,14 @@ export const CreateRoomReq = z.object({
   guestId,
   roomName: z.string().trim().min(1).max(ROOM_NAME_MAX),
   sport: z.enum(SPORTS),
+  /** Optional scheduled start (ISO). */
+  startsAt: z.iso.datetime().optional(),
 });
+
+export const AdminReq = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("feature"), code: roomCode, featured: z.boolean() }),
+  z.object({ action: z.literal("anchor"), code: roomCode, label: z.string().trim().min(1).max(40), lagS: z.number().min(0).max(21_600) }),
+]);
 
 export const METRIC_EVENTS = [
   "room_created",

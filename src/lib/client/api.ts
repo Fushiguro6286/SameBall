@@ -30,7 +30,7 @@ export function isTestBrowser(): boolean {
 export const startSession = async (req: SessionReq) =>
   SessionRes.parse(await post("/api/session", { ...req, test: req.test || isTestBrowser() || undefined }));
 
-export const createRoomApi = (req: { guestId: string; roomName: string; sport: string }) =>
+export const createRoomApi = (req: { guestId: string; roomName: string; sport: string; startsAt?: string }) =>
   post<{ code: string; channelId: string; name: string; sport: string }>("/api/rooms", req);
 
 export const startTryApi = (req: { guestId?: string; name?: string; avatar?: string }) =>

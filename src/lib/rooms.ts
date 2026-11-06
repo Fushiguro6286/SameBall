@@ -22,6 +22,7 @@ export async function createRoom(opts: {
   parentCode?: string;
   standIndex?: number;
   kind?: "room" | "try";
+  startsAt?: Date;
   /** Extra Nexconn members (Judge Mode bots). Not counted as room members. */
   extraMembers?: string[];
 }): Promise<Room> {
@@ -42,6 +43,7 @@ export async function createRoom(opts: {
         standIndex: opts.standIndex ?? 0,
         memberCount: 1,
         kind: opts.kind ?? "room",
+        startsAt: opts.startsAt ?? null,
       })
       .returning();
     await db().insert(roomMembers).values({ roomCode: code, userId: opts.owner }).onConflictDoNothing();

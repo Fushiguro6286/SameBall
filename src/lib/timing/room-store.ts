@@ -7,6 +7,8 @@ import { RevealScheduler } from "./scheduler";
 
 export interface ViewItem {
   id: string;
+  /** "anchor" items are match markers ("Kick-off"), shown only once revealed. */
+  kind: "text" | "anchor";
   senderId: string;
   senderName: string;
   avatar: string;
@@ -135,17 +137,18 @@ export class RoomStore {
     return [...this.msgs.values()].sort(compareMsgs);
   }
 
-  /** Display list: text messages only. Locked items carry no text. */
+  /** Display list: text messages, plus anchors once revealed. Locked items carry no text. */
   view(): ViewItem[] {
     const now = this.now();
     const lag = this.effectiveLag();
     return this.all()
-      .filter((m) => m.kind === "text")
+      .filter((m) => m.kind === "text" || (m.kind === "anchor" && this.revealed.has(m.id)))
       .map((m) => {
         const locked = !this.revealed.has(m.id);
         const ra = this.revealedAt.get(m.id);
         return {
           id: m.id,
+          kind: m.kind === "anchor" ? ("anchor" as const) : ("text" as const),
           senderId: m.senderId,
           senderName: m.senderName,
           avatar: m.avatar,
@@ -153,7 +156,7 @@ export class RoomStore {
           locked,
           revealAt: revealAt(m, lag),
           lockedSince: this.lockedSince.get(m.id) ?? m.sentTime,
-          ...(locked ? {} : { text: m.text ?? "" }),
+          ...(locked ? {} : { text: m.kind === "anchor" ? String(m.payload?.label ?? "") : (m.text ?? "") }),
           justRevealed: ra !== undefined && now - ra < HIGHLIGHT_MS,
           spoiled: this.spoiled.has(m.id),
         };

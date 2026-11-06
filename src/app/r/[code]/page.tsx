@@ -34,5 +34,5 @@ async function RoomLoader(props: PageProps<"/r/[code]">) {
   if (!ROOM_CODE_RE.test(code)) notFound();
   const room = await getRoom(code);
   if (!room) notFound();
-  return <RoomClient code={room.code} roomName={room.name} sport={room.sport} kind={room.kind} demo={false} />;
+  return <RoomClient code={room.code} roomName={room.name} sport={room.sport} kind={room.kind} startsAt={room.kind === "room" ? room.startsAt?.getTime() : undefined} demo={false} />;
 }

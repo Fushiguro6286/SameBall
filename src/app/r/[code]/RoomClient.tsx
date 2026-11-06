@@ -10,6 +10,7 @@ import { FeedbackPrompt } from "@/components/FeedbackPrompt";
 import { HypeStrip } from "@/components/HypeStrip";
 import { LagBoard, useWatching } from "@/components/LagBoard";
 import { RoarButton } from "@/components/RoarButton";
+import { StartBanner } from "@/components/StartBanner";
 import { SyncCheckCard, SyncStartSheet } from "@/components/SyncCheck";
 import { Toggle } from "@/components/Toggle";
 import { TryPanel } from "@/components/TryPanel";
@@ -64,12 +65,14 @@ export function RoomClient({
   roomName,
   sport,
   kind = "room",
+  startsAt,
   demo,
 }: {
   code: string;
   roomName: string;
   sport: string;
   kind?: string;
+  startsAt?: number;
   demo: boolean;
 }) {
   const router = useRouter();
@@ -151,7 +154,7 @@ export function RoomClient({
   }, []);
 
   if (phase === "room" && session)
-    return <RoomView session={session} roomName={currentName} sport={asSport(sport)} isTry={kind === "try"} second={second} notice={notice} />;
+    return <RoomView session={session} roomName={currentName} sport={asSport(sport)} isTry={kind === "try"} second={second} startsAt={startsAt} notice={notice} />;
 
   return (
     <main className="floodlight flex flex-1 flex-col items-center justify-center px-4 py-10">
@@ -190,6 +193,7 @@ function RoomView({
   sport,
   isTry,
   second,
+  startsAt,
   notice,
 }: {
   session: RoomSession;
@@ -197,6 +201,7 @@ function RoomView({
   sport: Sport;
   isTry: boolean;
   second: boolean;
+  startsAt?: number;
   notice: string | null;
 }) {
   const params = useSearchParams();
@@ -301,6 +306,8 @@ function RoomView({
           ready={room.ready}
         />
       )}
+
+      {startsAt && origin && <StartBanner startsAt={startsAt} roomName={roomName} code={session.code} url={`${origin}/r/${session.code}`} />}
 
       <SyncCheckCard
         sync={room.sync}

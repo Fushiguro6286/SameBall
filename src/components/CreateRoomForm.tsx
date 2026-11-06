@@ -13,6 +13,7 @@ export function CreateRoomForm() {
   const router = useRouter();
   const [roomName, setRoomName] = useState("");
   const [sport, setSport] = useState<Sport>("cricket");
+  const [startsAt, setStartsAt] = useState("");
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState<string>(AVATARS[0]);
   const [busy, setBusy] = useState(false);
@@ -34,7 +35,12 @@ export function CreateRoomForm() {
       const s = await startSession({ guestId: prev?.guestId, name: name.trim(), avatar: avatar as (typeof AVATARS)[number] });
       saveProfile({ guestId: s.guestId, name: name.trim(), avatar });
       setMetricsUser(s.guestId);
-      const room = await createRoomApi({ guestId: s.guestId, roomName: roomName.trim(), sport });
+      const room = await createRoomApi({
+        guestId: s.guestId,
+        roomName: roomName.trim(),
+        sport,
+        startsAt: startsAt ? new Date(startsAt).toISOString() : undefined,
+      });
       rememberRoom({ code: room.code, name: room.name });
       track("room_created", room.code, { sport });
       router.push(`/r/${room.code}`);
@@ -78,6 +84,15 @@ export function CreateRoomForm() {
           ))}
         </div>
       </fieldset>
+      <label className="block">
+        <span className="mb-1 block text-sm text-muted">{t.schedule.field}</span>
+        <input
+          type="datetime-local"
+          value={startsAt}
+          onChange={(e) => setStartsAt(e.target.value)}
+          className="w-full rounded-xl border border-line bg-surface-2 px-4 py-3 text-base [color-scheme:dark]"
+        />
+      </label>
       <ProfileFields name={name} avatar={avatar} onName={setName} onAvatar={setAvatar} />
       {error && (
         <p role="alert" className="rounded-xl bg-danger/15 px-3 py-2 text-sm">

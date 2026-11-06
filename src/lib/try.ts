@@ -7,18 +7,22 @@ import { TEXT_TYPE, SB_TYPES, encodeTextExtra, sbContent } from "./transport/wir
 import { TRY_ANCHOR_LABEL, TRY_BOTS, TRY_STEPS, TRY_TEAMS, type BotKey } from "./try-script";
 
 const BOT_LIST = Object.values(TRY_BOTS);
-let botsReady = false;
+const readyBots = new Set<string>();
 
 /** Bots are real Nexconn users (issuing a token registers them), flagged is_bot so /stats leaves them out. */
-async function ensureBots() {
-  if (botsReady) return;
-  const have = await db().select({ id: profiles.id }).from(profiles).where(inArray(profiles.id, BOT_LIST.map((b) => b.id)));
-  for (const b of BOT_LIST.filter((b) => !have.some((h) => h.id === b.id))) {
-    await issueToken(b.id, b.name);
-    await db().insert(profiles).values({ id: b.id, name: b.name, avatar: b.avatar, isBot: true }).onConflictDoNothing();
+export async function ensureBotUsers(list: readonly { id: string; name: string; avatar: string }[]) {
+  const todo = list.filter((b) => !readyBots.has(b.id));
+  if (!todo.length) return;
+  const have = await db().select({ id: profiles.id }).from(profiles).where(inArray(profiles.id, todo.map((b) => b.id)));
+  for (const b of todo) {
+    if (!have.some((h) => h.id === b.id)) {
+      await issueToken(b.id, b.name);
+      await db().insert(profiles).values({ id: b.id, name: b.name, avatar: b.avatar, isBot: true }).onConflictDoNothing();
+    }
+    readyBots.add(b.id);
   }
-  botsReady = true;
 }
+const ensureBots = () => ensureBotUsers(BOT_LIST);
 
 export async function createTryRoom(owner: string): Promise<Room> {
   await ensureBots();

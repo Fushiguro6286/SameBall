@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { CreateRoomForm } from "@/components/CreateRoomForm";
+import { FeaturedRooms } from "@/components/FeaturedRooms";
 import { HeroPhones } from "@/components/HeroPhones";
 import { MyRooms } from "@/components/MyRooms";
 import { t } from "@/lib/i18n";
@@ -24,6 +26,10 @@ export default function Home() {
             {t.landing.createRoom}
           </a>
         </div>
+
+        <Suspense fallback={null}>
+          <FeaturedRooms />
+        </Suspense>
 
         <section aria-labelledby="how" className="w-full">
           <h2 id="how" className="mb-3 font-display text-3xl">

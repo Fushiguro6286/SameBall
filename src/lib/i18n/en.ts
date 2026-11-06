@@ -129,6 +129,36 @@ export const en = {
     secondName: "Second screen",
   },
 
+  schedule: {
+    field: "Starts at (optional)",
+    startsIn: (ms: number) => {
+      const m = Math.ceil(ms / 60_000);
+      if (m >= 60 * 24) return `Starts in ${Math.floor(m / 1440)}d ${Math.floor((m % 1440) / 60)}h`;
+      if (m >= 60) return `Starts in ${Math.floor(m / 60)}h ${m % 60}m`;
+      return ms > 60_000 ? `Starts in ${m}m` : `Starts in ${Math.ceil(ms / 1000)}s`;
+    },
+    google: "Google Calendar",
+    ics: "Add to calendar (.ics)",
+  },
+
+  featured: {
+    title: "Live and upcoming rooms",
+    live: "Live",
+    join: "Join",
+  },
+
+  admin: {
+    title: "Admin",
+    token: "Admin token",
+    load: "Load rooms",
+    feature: "Feature",
+    unfeature: "Unfeature",
+    anchor: "Post anchor",
+    anchorLabel: "Anchor label (e.g. Kick-off)",
+    anchorLag: "Your feed delay (s)",
+    denied: "Wrong token, or admin is not set up.",
+  },
+
   sync: {
     title: "Sync check",
     menu: "Start a sync check",

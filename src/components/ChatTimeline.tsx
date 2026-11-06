@@ -41,7 +41,13 @@ export function ChatTimeline({
       <ol className="mx-auto flex max-w-xl flex-col gap-3" aria-label="Messages">
         {items.map((m) => (
           <li key={m.id}>
-            {m.locked ? (
+            {m.kind === "anchor" ? (
+              <p className="flex items-center gap-3 text-xs uppercase tracking-widest text-muted">
+                <span aria-hidden className="h-px flex-1 bg-line" />
+                {m.text}
+                <span aria-hidden className="h-px flex-1 bg-line" />
+              </p>
+            ) : m.locked ? (
               <LockedBubble
                 senderName={m.senderName}
                 avatar={m.avatar}
