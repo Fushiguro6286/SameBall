@@ -8,6 +8,7 @@ import { Composer } from "@/components/Composer";
 import { ConnBanner } from "@/components/ConnBanner";
 import { FeedbackPrompt } from "@/components/FeedbackPrompt";
 import { HypeStrip } from "@/components/HypeStrip";
+import { LagBoard, useWatching } from "@/components/LagBoard";
 import { RoarButton } from "@/components/RoarButton";
 import { Toggle } from "@/components/Toggle";
 import { TryPanel } from "@/components/TryPanel";
@@ -247,6 +248,12 @@ function RoomView({
     document.title = counts ? `(${counts}) ${roomName}` : roomName;
   }, [room.unseen, room.lockedCount, roomName]);
 
+  const watching = useWatching(session.guestId, session.code, !session.demo);
+  // My own entry always shows my current lag, even before my latest stamp goes out.
+  const boardEntries = [
+    ...room.lags.filter((l) => l.senderId !== session.guestId),
+    { senderId: session.guestId, name: session.name, avatar: session.avatar, lag: room.lagMs },
+  ];
   const lagS = Math.round(room.lagMs / 1000);
   const empty = room.ready && room.view.length === 0;
 
@@ -257,7 +264,10 @@ function RoomView({
         <Link href="/" aria-label={t.room.leaveHome} className="rounded-full px-2 py-1 text-xl text-muted">
           ←
         </Link>
-        <h1 className="min-w-0 flex-1 truncate font-display text-2xl leading-tight">{roomName}</h1>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate font-display text-2xl leading-tight">{roomName}</h1>
+          <LagBoard entries={boardEntries} myId={session.guestId} watching={watching} />
+        </div>
         <button
           onClick={() => setLagOpen(true)}
           aria-label={`${t.room.lagButtonLabel}: ${t.room.lagBadge(lagS)}`}

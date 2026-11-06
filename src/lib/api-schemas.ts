@@ -81,6 +81,7 @@ export const TryReq = z.object({
   avatar: avatar.optional(),
   test: z.boolean().optional(),
 });
+/** { guestId, code }: Judge Mode start, presence heartbeat. */
 export const TryActionReq = z.object({ guestId, code: roomCode });
 export const TryStepReq = z.object({ guestId, code: roomCode, step: z.number().int().min(0).max(30) });
 

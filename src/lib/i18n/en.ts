@@ -129,6 +129,16 @@ export const en = {
     secondName: "Second screen",
   },
 
+  board: {
+    title: "Lag leaderboard",
+    help: "How far each friend's feed is behind the fastest one in the room.",
+    open: "Open the lag leaderboard",
+    liveWire: "⚡ Live wire",
+    past: (s: number) => `🦕 ${s}s in the past`,
+    behind: (s: number) => `+${s}s`,
+    watching: (n: number) => `${n} watching now`,
+  },
+
   roar: {
     label: "Hold to roar",
     soundOn: "🔊 Tap to turn on stadium sound",

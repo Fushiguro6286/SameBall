@@ -38,6 +38,19 @@ interface Snapshot {
   lagMs: number;
   pending: Pending[];
   anchors: Anchor[];
+  lags: MemberLag[];
+}
+/** Each member's latest lag stamp (from any of their messages), for the Lag Leaderboard. */
+export interface MemberLag {
+  senderId: string;
+  name: string;
+  avatar: string;
+  lag: number;
+}
+function lagsOf(st: RoomStore): MemberLag[] {
+  const latest = new Map<string, MemberLag>();
+  for (const m of st.all()) if (m.lag !== null) latest.set(m.senderId, { senderId: m.senderId, name: m.senderName, avatar: m.avatar, lag: m.lag });
+  return [...latest.values()];
 }
 /** Anchors are schedule markers ("First ball"), not chat content, so they are readable even while locked. */
 export interface Anchor {
@@ -57,6 +70,7 @@ const snapshot = (st: RoomStore): Snapshot => ({
   lagMs: st.effectiveLag(),
   pending: st.pending(),
   anchors: anchorsOf(st),
+  lags: lagsOf(st),
 });
 
 /** A roar that just reached my screen. */
@@ -79,7 +93,7 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
   const sourceRef = useRef(initialSource);
   const lagTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const emitRoarsRef = useRef<(msgs: ChatMsg[]) => void>(() => {});
-  const [snap, setSnap] = useState<Snapshot>({ view: [], lockedCount: 0, lagMs: initialLagMs, pending: [], anchors: [] });
+  const [snap, setSnap] = useState<Snapshot>({ view: [], lockedCount: 0, lagMs: initialLagMs, pending: [], anchors: [], lags: [] });
   const [heldBack, setHeldBack] = useState(0);
   const [status, setStatus] = useState<RoomStatus>("connecting");
   const [attempt, setAttempt] = useState(0);
@@ -156,6 +170,20 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
       if (!disposed) store.add(raws.map(parseIncoming).filter((m): m is ChatMsg => !!m));
     };
 
+    // Tell the room my lag once per connection, unless my latest stamp already says it.
+    const announceLag = () => {
+      const lag = store.effectiveLag();
+      const mine = store.all().filter((m) => m.senderId === s.guestId && m.kind === "lag").at(-1);
+      if (mine?.lag === lag) return;
+      transport
+        .sendCustom(SB_TYPES.lag, sbContent("lag", { lag, source: sourceRef.current.slice(0, 16), n: s.name, a: s.avatar }))
+        .then((raw) => {
+          const m = parseIncoming(raw);
+          if (m && !disposed) store.add([m]);
+        })
+        .catch(() => undefined);
+    };
+
     let wasDown = false;
     (async () => {
       try {
@@ -176,6 +204,7 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
         );
         await transport.connect();
         await loadHistory();
+        announceLag();
         if (!disposed) {
           setStatus("connected");
           setReady(true);

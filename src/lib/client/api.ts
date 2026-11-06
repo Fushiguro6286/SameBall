@@ -38,6 +38,8 @@ export const startTryApi = (req: { guestId?: string; name?: string; avatar?: str
 export const tryStartApi = (guestId: string, code: string) => post<{ ok: true }>("/api/try/start", { guestId, code });
 export const tryStepApi = (guestId: string, code: string, step: number) => post<{ ok: true }>("/api/try/step", { guestId, code, step });
 
+export const presenceApi = (guestId: string, code: string) => post<{ watching: number }>("/api/presence", { guestId, code });
+
 export function errorText(e: unknown): string {
   if (e instanceof ApiError) {
     if (e.status === 429) return t.errors.rate;

@@ -40,6 +40,7 @@ export const roomMembers = pgTable(
     roomCode: text("room_code").notNull(),
     userId: text("user_id").notNull(),
     joinedAt: ts("joined_at"),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }), // "watching now" heartbeat
   },
   (t) => [primaryKey({ columns: [t.roomCode, t.userId] }), index("room_members_user_idx").on(t.userId)],
 );
