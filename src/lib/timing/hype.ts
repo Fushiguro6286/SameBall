@@ -20,6 +20,7 @@ const EMOJI = /\p{Extended_Pictographic}/gu;
 /** Intensity of one message. Only text and roars count. */
 export function hypeWeight(m: ChatMsg): number {
   if (m.kind === "roar") return 1.2 * (Number(m.payload?.intensity) || 1);
+  if (m.kind === "voice") return 1.5; // a voice note during a moment is usually a shout
   if (m.kind !== "text") return 0;
   const text = m.text ?? "";
   const emojis = text.match(EMOJI)?.length ?? 0;

@@ -49,7 +49,7 @@ export function findMoments(revealed: ChatMsg[]): Moment[] {
       for (const m of win) {
         const prev = reactors.get(m.senderId);
         if (!prev || m.sentTime < prev.firstSent)
-          reactors.set(m.senderId, { senderId: m.senderId, name: m.senderName, avatar: m.avatar, lag: m.lag ?? 0, firstSent: m.sentTime, text: m.kind === "text" ? (m.text ?? null) : null });
+          reactors.set(m.senderId, { senderId: m.senderId, name: m.senderName, avatar: m.avatar, lag: m.lag ?? 0, firstSent: m.sentTime, text: m.kind === "text" ? (m.text ?? null) : m.kind === "voice" ? "🎙️" : null });
       }
       if (sum >= MOMENT_MIN_WEIGHT && reactors.size >= 2) {
         out.push({ id: msgs[i].id, matchTime: start, reactors: [...reactors.values()] });

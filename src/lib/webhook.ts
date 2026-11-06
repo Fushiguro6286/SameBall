@@ -1,6 +1,6 @@
 // Parses Nexconn post-message webhooks (docs: platform-chat-api/webhook/message/send) into rows we count.
 import { z } from "zod";
-import { SB_TYPES, TEXT_TYPE, TextExtra } from "./transport/wire";
+import { SB_TYPES, TEXT_TYPE, TextExtra, VOICE_TYPE } from "./transport/wire";
 
 const Item = z.object({
   userId: z.string().max(64),
@@ -24,7 +24,7 @@ export interface NcRow {
 
 const GROUP = 3;
 const COMMUNITY = 10; // stadiums
-const OURS = new Set<string>([TEXT_TYPE, ...Object.values(SB_TYPES)]);
+const OURS = new Set<string>([TEXT_TYPE, VOICE_TYPE, ...Object.values(SB_TYPES)]);
 
 function json(s: unknown): Record<string, unknown> | null {
   if (typeof s !== "string") return null;
@@ -40,7 +40,7 @@ function json(s: unknown): Record<string, unknown> | null {
 export function lagOf(messageType: string, content: string | undefined): number | null {
   const c = json(content);
   if (!c) return null;
-  if (messageType === TEXT_TYPE) {
+  if (messageType === TEXT_TYPE || messageType === VOICE_TYPE) {
     const ex = TextExtra.safeParse(json(c.extra));
     return ex.success ? Math.round(ex.data.lag) : null;
   }

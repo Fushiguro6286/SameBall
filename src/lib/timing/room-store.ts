@@ -1,14 +1,14 @@
 // Room state: which messages exist, which are locked for me, and when they reveal.
 // Pure TS (no React, no DOM) so the rules can be unit-tested.
 
-import { ChatMsg, clampLag, compareMsgs, isLocked, revealAt } from "./engine";
+import { ChatMsg, clampLag, compareMsgs, isChat, isLocked, revealAt } from "./engine";
 import { hypeWeight, type Pending } from "./hype";
 import { RevealScheduler } from "./scheduler";
 
 export interface ViewItem {
   id: string;
   /** "anchor" items are match markers ("Kick-off"), shown only once revealed. */
-  kind: "text" | "anchor";
+  kind: "text" | "voice" | "anchor";
   senderId: string;
   senderName: string;
   avatar: string;
@@ -19,6 +19,8 @@ export interface ViewItem {
   lockedSince: number;
   /** Present only when unlocked. Locked items never carry content. */
   text?: string;
+  /** Voice notes, only when unlocked. */
+  voice?: { url: string; dur: number };
   justRevealed: boolean;
   spoiled: boolean;
 }
@@ -84,6 +86,19 @@ export class RoomStore {
     if (changed) this.changed();
   }
 
+  /** Recalled messages leave for good. */
+  remove(ids: string[]) {
+    let changed = false;
+    for (const id of ids) {
+      if (!this.msgs.delete(id)) continue;
+      this.revealed.delete(id);
+      this.lockedSince.delete(id);
+      this.revealedAt.delete(id);
+      changed = true;
+    }
+    if (changed) this.recompute();
+  }
+
   setLag(ms: number) {
     this.lag = clampLag(ms);
     if (this.pausedAt !== null) this.pausedAt = this.now();
@@ -142,13 +157,13 @@ export class RoomStore {
     const now = this.now();
     const lag = this.effectiveLag();
     return this.all()
-      .filter((m) => m.kind === "text" || (m.kind === "anchor" && this.revealed.has(m.id)))
+      .filter((m) => isChat(m) || (m.kind === "anchor" && this.revealed.has(m.id)))
       .map((m) => {
         const locked = !this.revealed.has(m.id);
         const ra = this.revealedAt.get(m.id);
         return {
           id: m.id,
-          kind: m.kind === "anchor" ? ("anchor" as const) : ("text" as const),
+          kind: m.kind === "anchor" ? ("anchor" as const) : m.kind === "voice" ? ("voice" as const) : ("text" as const),
           senderId: m.senderId,
           senderName: m.senderName,
           avatar: m.avatar,
@@ -156,7 +171,11 @@ export class RoomStore {
           locked,
           revealAt: revealAt(m, lag),
           lockedSince: this.lockedSince.get(m.id) ?? m.sentTime,
-          ...(locked ? {} : { text: m.kind === "anchor" ? String(m.payload?.label ?? "") : (m.text ?? "") }),
+          ...(locked
+            ? {}
+            : m.kind === "voice"
+              ? { voice: { url: String(m.payload?.url ?? ""), dur: Number(m.payload?.dur) || 0 } }
+              : { text: m.kind === "anchor" ? String(m.payload?.label ?? "") : (m.text ?? "") }),
           justRevealed: ra !== undefined && now - ra < HIGHLIGHT_MS,
           spoiled: this.spoiled.has(m.id),
         };
@@ -177,7 +196,7 @@ export class RoomStore {
 
   lockedCount(): number {
     let n = 0;
-    for (const m of this.msgs.values()) if (m.kind === "text" && !this.revealed.has(m.id)) n++;
+    for (const m of this.msgs.values()) if (isChat(m) && !this.revealed.has(m.id)) n++;
     return n;
   }
 

@@ -42,7 +42,7 @@ async function RoomLoader(props: PageProps<"/r/[code]">) {
       roomName={room.name}
       sport={room.sport}
       kind={room.kind}
-      startsAt={room.kind === "room" ? room.startsAt?.getTime() : undefined}
+      startsAt={room.kind === "room" || room.kind === "creator" ? room.startsAt?.getTime() : undefined}
       ownerId={room.createdBy}
       aiCatchup={!!aiConfig()}
       demo={false}

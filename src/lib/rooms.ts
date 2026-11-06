@@ -21,7 +21,7 @@ export async function createRoom(opts: {
   owner: string;
   parentCode?: string;
   standIndex?: number;
-  kind?: "room" | "try" | "stadium";
+  kind?: "room" | "try" | "stadium" | "creator";
   featured?: boolean;
   startsAt?: Date;
   /** Extra Nexconn members (Judge Mode bots). Not counted as room members. */

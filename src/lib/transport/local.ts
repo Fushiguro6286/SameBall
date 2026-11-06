@@ -2,7 +2,7 @@
 // The UI shows a DEMO MODE banner whenever this is used.
 
 import type { ConnState, Transport } from "./types";
-import { RawMsg, TEXT_TYPE } from "./wire";
+import { RawMsg, TEXT_TYPE, VOICE_TYPE } from "./wire";
 
 const HISTORY_CAP = 500;
 
@@ -40,11 +40,22 @@ export function createLocalTransport(opts: { roomCode: string; userId: string })
     connect: async () => opts.userId,
     sendText: (text, extra) => send(TEXT_TYPE, { text, extra }),
     sendCustom: (type, content) => send(type, content),
+    // Demo only: the audio travels inline as a data URL.
+    sendVoice: async (file, duration, extra) => {
+      const remoteUrl = await new Promise<string>((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(String(r.result));
+        r.onerror = () => rej(r.error);
+        r.readAsDataURL(file);
+      });
+      return send(VOICE_TYPE, { remoteUrl, duration, extra });
+    },
     loadHistory: async () => readHistory(),
     onMessages(cb) {
       subs.add(cb);
       return () => subs.delete(cb);
     },
+    onDeleted: () => () => {}, // demo rooms have no server recall
     onStatus(cb: (s: ConnState) => void) {
       cb("connected");
       return () => {};

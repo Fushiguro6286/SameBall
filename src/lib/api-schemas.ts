@@ -39,6 +39,8 @@ export const CreateRoomReq = z.object({
   sport: z.enum(SPORTS),
   /** Optional scheduled start (ISO). */
   startsAt: z.iso.datetime().optional(),
+  /** Creator room: one host, many fans. */
+  creator: z.boolean().optional(),
 });
 
 export const AdminReq = z.discriminatedUnion("action", [
@@ -70,6 +72,7 @@ export const METRIC_EVENTS = [
   "recap_shared",
   "paused",
   "moment_card_shared",
+  "voice_sent",
 ] as const;
 
 export const MetricsReq = z.object({
@@ -112,7 +115,16 @@ export const TryReq = z.object({
 /** { guestId, key, code }: Judge Mode start, presence heartbeat. */
 export const TryActionReq = z.object({ guestId, key, code: roomCode });
 export const TryStepReq = z.object({ guestId, key, code: roomCode, step: z.number().int().min(0).max(30) });
-export const ModerateReq = z.object({ guestId, key, code: roomCode, targetId: z.string().max(64), action: z.enum(["mute", "remove"]) });
+export const ModerateReq = z.object({
+  guestId,
+  key,
+  code: roomCode,
+  targetId: z.string().max(64),
+  // recall = delete a message for everyone; quiet/unquiet = only the host can post (Nexconn group freeze).
+  action: z.enum(["mute", "remove", "recall", "quiet", "unquiet"]),
+  messageId: z.string().min(1).max(64).optional(),
+  sentAt: z.number().int().positive().optional(),
+});
 export const ReportReq = z.object({ guestId, key, code: roomCode, targetId: z.string().max(64), reason: z.string().trim().max(300).optional() });
 
 export const DeleteDataReq = z.object({ guestId, key: key.optional() });

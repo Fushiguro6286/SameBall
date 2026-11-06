@@ -14,6 +14,7 @@ let everConnected = false;
 let status: ConnState = "connecting";
 const msgSubs = new Set<(m: NcMessage[]) => void>();
 const statusSubs = new Set<(s: ConnState) => void>();
+const delSubs = new Set<(m: { channelId?: string; messageId: string }[]) => void>();
 
 function setStatus(s: ConnState) {
   status = s;
@@ -46,6 +47,10 @@ function loadSdk(appKey: string, area: string): Promise<Sdk> {
       new sdk.MessageHandler({
         onMessageReceived({ messages }) {
           msgSubs.forEach((f) => f(messages));
+        },
+        onMessageDeleted({ messages }) {
+          const list = messages.map((m) => ({ channelId: (m as { channelIdentifier?: { channelId?: string } }).channelIdentifier?.channelId, messageId: m.messageId }));
+          delSubs.forEach((f) => f(list));
         },
       }),
     );
@@ -129,6 +134,16 @@ export function createNexconnTransport(opts: { appKey: string; area: string; tok
       return toRaw(res.data);
     },
 
+    async sendVoice(file, duration, extra) {
+      const { sdk, channel } = await ready();
+      // The stamp goes in at construction, so a voice note can never go out unstamped (= unlocked for everyone).
+      const params = new sdk.SendHDVoiceMessageParams({ remoteUrl: "", duration, extra, format: file.type.includes("mp4") ? "aac" : "webm" });
+      params.file = file;
+      const res = await queued(() => channel.sendMediaMessage(params));
+      if (!res.isOk || !res.data) throw new Error(`voice send failed (${res.code})`);
+      return toRaw(res.data);
+    },
+
     async loadHistory(pages) {
       const { sdk, channel } = await ready();
       const q = sdk.BaseChannel.createMessagesQuery({ channelIdentifier: channel.identifier, pageSize: 100, isAscending: false });
@@ -150,6 +165,17 @@ export function createNexconnTransport(opts: { appKey: string; area: string; tok
       };
       msgSubs.add(f);
       const off = () => msgSubs.delete(f);
+      cleanups.push(off);
+      return off;
+    },
+
+    onDeleted(cb) {
+      const f = (list: { channelId?: string; messageId: string }[]) => {
+        const ids = list.filter((m) => !m.channelId || m.channelId === opts.channelId).map((m) => m.messageId);
+        if (ids.length) cb(ids);
+      };
+      delSubs.add(f);
+      const off = () => delSubs.delete(f);
       cleanups.push(off);
       return off;
     },

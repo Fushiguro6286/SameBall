@@ -4,6 +4,7 @@ import { checkKey } from "@/lib/auth";
 import { db, profiles } from "@/lib/db";
 import { clientIp, isProfane, rateLimit } from "@/lib/guard";
 import { body, fail, json } from "@/lib/http";
+import { FEATURES } from "@/lib/config";
 import { createRoom } from "@/lib/rooms";
 
 export async function POST(req: Request) {
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
   const [owner] = await db().select({ id: profiles.id }).from(profiles).where(eq(profiles.id, b.guestId)).limit(1);
   if (!owner) return fail(401, "no_session");
   try {
-    const room = await createRoom({ name: b.roomName, sport: b.sport, owner: b.guestId, startsAt });
+    const room = await createRoom({ name: b.roomName, sport: b.sport, owner: b.guestId, startsAt, kind: b.creator && FEATURES.creatorRooms ? "creator" : "room" });
     return json({ code: room.code, channelId: room.channelId, name: room.name, sport: room.sport });
   } catch (e) {
     console.error("create room failed", (e as Error).message);

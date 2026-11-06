@@ -6,6 +6,9 @@ import { z } from "zod";
 import { ChatMsg, MsgKind, clampLag } from "../timing/engine";
 
 export const TEXT_TYPE = "RC:TxtMsg";
+/** Nexconn HD voice message (uploaded by the SDK); its `extra` carries the same stamp as text. */
+export const VOICE_TYPE = "RC:HQVCMsg";
+export const VOICE_MAX_S = 15;
 
 export const SB_TYPES = {
   roar: "SB:Roar",
@@ -16,6 +19,7 @@ export const SB_TYPES = {
   call: "SB:Call",
   callvote: "SB:CallVote",
   callresult: "SB:CallResult",
+  host: "SB:Host",
 } as const;
 export type SbKind = keyof typeof SB_TYPES;
 export type SbType = (typeof SB_TYPES)[SbKind];
@@ -37,6 +41,8 @@ export const SbPayloads = {
   callvote: z.object({ ...base, callId: z.string().max(32), pick: z.number().int().min(0).max(4) }),
   // answer −1 = "picks locked" (sent before the moment), 0–4 = the option that happened.
   callresult: z.object({ ...base, callId: z.string().max(32), answer: z.number().int().min(-1).max(4) }),
+  // Creator rooms, host only: pin a message (id "" = unpin), slow mode for fans, hide a recalled message, quiet fans.
+  host: z.object({ ...base, op: z.enum(["pin", "slow", "hide", "quiet"]), id: z.string().max(64).optional(), secs: z.number().int().min(0).max(300).optional(), on: z.boolean().optional() }),
 } satisfies Record<SbKind, z.ZodType>;
 export type SbPayload<K extends SbKind> = z.infer<(typeof SbPayloads)[K]>;
 
@@ -82,6 +88,22 @@ export function parseIncoming(raw: RawMsg): ChatMsg | null {
       ...common,
       kind: "text",
       text,
+      lag: ex.success ? clampLag(ex.data.lag) : null,
+      senderName: (ex.success && ex.data.n) || raw.senderId.slice(0, 8),
+      avatar: (ex.success && ex.data.a) || "👤",
+    };
+  }
+
+  if (raw.type === VOICE_TYPE) {
+    const c = raw.content;
+    const url = typeof c.remoteUrl === "string" ? c.remoteUrl : "";
+    // Only uploaded files (https) or the local demo's inline audio; anything else is dropped.
+    if (!/^https:\/\//.test(url) && !url.startsWith("data:audio/")) return null;
+    const ex = TextExtra.safeParse(safeJson(c.extra));
+    return {
+      ...common,
+      kind: "voice",
+      payload: { url, dur: Math.min(60, Math.max(0, Number(c.duration) || 0)) },
       lag: ex.success ? clampLag(ex.data.lag) : null,
       senderName: (ex.success && ex.data.n) || raw.senderId.slice(0, 8),
       avatar: (ex.success && ex.data.a) || "👤",

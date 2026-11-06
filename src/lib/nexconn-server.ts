@@ -110,6 +110,24 @@ export async function muteInGroup(channelId: string, userId: string, durationMin
 }
 
 /** Send as a given user (Judge Mode bots). `content` is the message-type's JSON. */
+/** Deletes (recalls) a message for everyone. Docs: platform-chat-api/message/msgrecall. */
+export async function recallMessage(fromUserId: string, channelId: string, messageId: string, sentAt?: number) {
+  await ncCall("/v4/message/delete", { fromUserId, channelType: 3, channelId, messageId, ...(sentAt ? { sentAt } : {}) });
+}
+
+/**
+ * "Quiet fans": freeze the group so only allowed senders (the host) can post from the SDK.
+ * Docs: platform-chat-api/group-channel/mute/ban-group, unban-group, add-to-group-ban-whitelist.
+ */
+export async function setGroupQuiet(channelId: string, hostId: string, on: boolean) {
+  if (on) {
+    await ncCall("/v4/group-channel/allowed-sender-list/add", { channelId, userIds: [hostId] });
+    await ncCall("/v4/group-channel/freeze-list/add", { channelIds: [channelId] });
+  } else {
+    await ncCall("/v4/group-channel/freeze-list/remove", { channelIds: [channelId] });
+  }
+}
+
 export async function sendGroupMessage(fromUserId: string, channelId: string, messageType: string, content: object) {
   await ncCall("/v4/group-channel/message/send", {
     fromUserId,

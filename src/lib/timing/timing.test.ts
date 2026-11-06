@@ -3,7 +3,7 @@ import { ChatMsg, MAX_LAG_MS, clampLag, compareMsgs, isLocked, matchTime, reveal
 import { estimateOffset, measureOffset, median, offsetOf } from "./clock";
 import { MinHeap } from "./scheduler";
 import { RoomStore } from "./room-store";
-import { encodeTextExtra, parseIncoming, RawMsg, SB_TYPES } from "../transport/wire";
+import { encodeTextExtra, parseIncoming, RawMsg, SB_TYPES, VOICE_TYPE } from "../transport/wire";
 
 const msg = (p: Partial<ChatMsg> & { id: string }): ChatMsg => ({
   senderId: "them",
@@ -239,6 +239,22 @@ describe("wire parsing", () => {
     expect(parseIncoming(raw({ type: SB_TYPES.roar, content: { v: 1, lag: 3000, intensity: 9 } }))).toBeNull();
     expect(parseIncoming(raw({ type: "RC:ImgMsg" }))).toBeNull();
     expect(parseIncoming(raw({ sentTime: NaN, content: { text: "x" } }))).toBeNull();
+  });
+  it("voice notes carry the text stamp, lock like text and never render locked content", () => {
+    const v = (remoteUrl: string, extra?: string) => parseIncoming(raw({ type: VOICE_TYPE, content: { remoteUrl, duration: 7, extra } }));
+    const m = v("https://files.example/v.webm", encodeTextExtra(8000, "Asha", "🦊"))!;
+    expect(m).toMatchObject({ kind: "voice", lag: 8000, senderName: "Asha", payload: { url: "https://files.example/v.webm", dur: 7 } });
+    expect(isLocked(m, "me", 30_000, 1000)).toBe(true);
+    const store = new RoomStore("me", 30_000, () => 1000);
+    store.add([m]);
+    expect(store.view()[0]).toMatchObject({ kind: "voice", locked: true });
+    expect(store.view()[0].voice).toBeUndefined();
+    expect(store.lockedCount()).toBe(1);
+    store.dispose();
+    // Unsafe or missing URLs are dropped; a missing stamp never locks.
+    expect(v("javascript:alert(1)", encodeTextExtra(0, "x", "x"))).toBeNull();
+    expect(v("")).toBeNull();
+    expect(v("https://files.example/v.webm")!.lag).toBeNull();
   });
 });
 

@@ -47,7 +47,7 @@ export async function getRecap(code: string): Promise<Recap | null> {
     select
       (select count(*) from room_members rm join profiles p on p.id = rm.user_id where rm.room_code = ${code} and rm.removed_at is null and ${REAL})::int as fans,
       case when (select n from srv) > 0
-        then (select count(*) from nc_messages m join profiles p on p.id = m.user_id where m.channel_id = ${ch} and m.message_type = 'RC:TxtMsg' and ${REAL})
+        then (select count(*) from nc_messages m join profiles p on p.id = m.user_id where m.channel_id = ${ch} and m.message_type in ('RC:TxtMsg', 'RC:HQVCMsg') and ${REAL})
         else (select count(*) from events where room_code = ${code} and name = 'message_sent' and not is_test)
       end::int as messages,
       (select count(*) from events where room_code = ${code} and name = 'revealed_on_time' and not is_test)::int as spoilers,

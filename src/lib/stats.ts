@@ -27,7 +27,7 @@ export interface Totals {
 const MSG_ROWS = sql`
   select r.code as room, m.user_id, m.sent_at as at
   from nc_messages m join rooms r on r.channel_id = m.channel_id left join profiles p on p.id = m.user_id
-  where r.kind <> 'try' and ${REAL} and m.message_type = 'RC:TxtMsg'
+  where r.kind <> 'try' and ${REAL} and m.message_type in ('RC:TxtMsg', 'RC:HQVCMsg')
   union all
   select e.room_code, e.user_id, e.created_at
   from events e
@@ -50,7 +50,7 @@ export async function getTotals(): Promise<Totals> {
         ) x
       )::int as rooms_2plus,
       case when (select n from srv) > 0
-        then (select count(*) from nc_messages m left join profiles p on p.id = m.user_id where ${REAL} and m.message_type = 'RC:TxtMsg' and m.channel_id in ${REAL_ROOM_CHANNELS})
+        then (select count(*) from nc_messages m left join profiles p on p.id = m.user_id where ${REAL} and m.message_type in ('RC:TxtMsg', 'RC:HQVCMsg') and m.channel_id in ${REAL_ROOM_CHANNELS})
         else (select count(*) from events where name = 'message_sent' and not is_test and room_code in ${REAL_ROOM_CODES})
       end::int as messages,
       (select count(*) from events where name = 'revealed_on_time' and not is_test and room_code in ${REAL_ROOM_CODES})::int as spoilers,

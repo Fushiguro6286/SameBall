@@ -20,19 +20,7 @@ export function clientIp(req: Request): string {
 }
 
 // shortcut: tiny blocklist; Nexconn's Console profanity filter covers chat messages.
-const BAD = [
-  "fuck", "shit", "bitch", "cunt", "dick", "pussy", "asshole", "bastard", "slut", "whore", "nigger", "nigga", "faggot", "retard",
-  "chutiya", "chutiye", "madarchod", "behenchod", "bhenchod", "bhosdike", "bhosdi", "gandu", "randi", "lund", "harami", "kutta", "kamina",
-];
-const BAD_SET = new Set(BAD);
-const LEET: Record<string, string> = { "0": "o", "1": "i", "3": "e", "4": "a", "@": "a", $: "s", "5": "s" };
-/** Whole-word match so names like "Ashit" or "Dickens" pass. */
-export const isProfane = (s: string) =>
-  s
-    .toLowerCase()
-    .replace(/[0-9@$]/g, (c) => LEET[c] ?? c)
-    .split(/[^a-z]+/)
-    .some((w) => BAD_SET.has(w) || BAD_SET.has(w.replace(/(.)\1+/g, "$1")));
+export { isProfane } from "./profanity";
 
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 export function randomCode(len = 6): string {

@@ -5,9 +5,10 @@ import { useEffect, useState } from "react";
 import { createRoomApi, errorText, isTestBrowser, startSession } from "@/lib/client/api";
 import { setMetricsUser, track } from "@/lib/client/metrics";
 import { loadProfile, rememberRoom, saveProfile } from "@/lib/client/storage";
-import { AVATARS, ROOM_NAME_MAX, SPORTS, type Sport } from "@/lib/config";
+import { AVATARS, FEATURES, ROOM_NAME_MAX, SPORTS, type Sport } from "@/lib/config";
 import { useT } from "@/lib/i18n/client";
 import { ProfileFields } from "./ProfileFields";
+import { Toggle } from "./Toggle";
 
 export function CreateRoomForm() {
   const t = useT();
@@ -15,6 +16,7 @@ export function CreateRoomForm() {
   const [roomName, setRoomName] = useState("");
   const [sport, setSport] = useState<Sport>("cricket");
   const [startsAt, setStartsAt] = useState("");
+  const [creator, setCreator] = useState(false);
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState<string>(AVATARS[0]);
   const [busy, setBusy] = useState(false);
@@ -42,9 +44,10 @@ export function CreateRoomForm() {
         roomName: roomName.trim(),
         sport,
         startsAt: startsAt ? new Date(startsAt).toISOString() : undefined,
+        creator: FEATURES.creatorRooms && creator ? true : undefined,
       });
       rememberRoom({ code: room.code, name: room.name });
-      track("room_created", room.code, { sport });
+      track("room_created", room.code, { sport, creator: FEATURES.creatorRooms && creator });
       router.push(`/r/${room.code}`);
     } catch (e) {
       setError(errorText(e));
@@ -95,6 +98,7 @@ export function CreateRoomForm() {
           className="w-full rounded-xl border border-line bg-surface-2 px-4 py-3 text-base [color-scheme:dark]"
         />
       </label>
+      {FEATURES.creatorRooms && <Toggle label={t.creator.toggle} help={t.creator.toggleHelp} on={creator} onChange={setCreator} />}
       <ProfileFields name={name} avatar={avatar} onName={setName} onAvatar={setAvatar} />
       {error && (
         <p role="alert" className="rounded-xl bg-danger/15 px-3 py-2 text-sm">

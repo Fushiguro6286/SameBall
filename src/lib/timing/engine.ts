@@ -10,7 +10,7 @@ export function clampLag(ms: number): number {
   return Math.min(MAX_LAG_MS, Math.max(0, Math.round(ms)));
 }
 
-export type MsgKind = "text" | "roar" | "lag" | "anchor" | "synccheck" | "synctap" | "call" | "callvote" | "callresult";
+export type MsgKind = "text" | "voice" | "roar" | "lag" | "anchor" | "synccheck" | "synctap" | "call" | "callvote" | "callresult" | "host";
 
 export interface ChatMsg {
   id: string;
@@ -27,6 +27,9 @@ export interface ChatMsg {
   /** Server-assigned sent time (Nexconn Message.sentTime). */
   sentTime: number;
 }
+
+/** Chat a person wrote or said (text or a voice note), as opposed to reactions and control messages. */
+export const isChat = (m: { kind: MsgKind }) => m.kind === "text" || m.kind === "voice";
 
 export const matchTime = (m: ChatMsg) => m.sentTime - (m.lag ?? 0);
 

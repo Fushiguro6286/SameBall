@@ -7,7 +7,7 @@ import { track } from "../client/metrics";
 import { saveRoomPrefs } from "../client/storage";
 import { observe, type Observation } from "../timing/autosync";
 import { measureOffset } from "../timing/clock";
-import { LIVE_MAX_LAG_MS, MAX_LAG_MS, matchTime, revealAt, type ChatMsg } from "../timing/engine";
+import { LIVE_MAX_LAG_MS, MAX_LAG_MS, isChat, matchTime, revealAt, type ChatMsg } from "../timing/engine";
 import type { Pending } from "../timing/hype";
 import type { Tap } from "../timing/sync-solver";
 import { callsOf, type CallPoints, type CallState } from "../timing/callit";
@@ -34,6 +34,8 @@ export interface RoomSession {
   stand?: string;
   /** Second-screen windows don't overwrite this browser's saved lag. */
   ephemeral?: boolean;
+  /** Creator rooms: the host. Only their Call it polls and SB:Host controls count. */
+  hostId?: string;
 }
 
 export type RoomStatus = ConnState | "failed";
@@ -58,6 +60,25 @@ interface Snapshot {
   /** Call it: the latest prediction and the room's points (both only from what's revealed for me). */
   call: CallState | null;
   callBoard: CallPoints[];
+  /** Creator rooms: the host's controls (null elsewhere). */
+  host: HostState | null;
+}
+/** Creator-room controls, from the host's SB:Host messages (control messages, readable even while locked). */
+export interface HostState {
+  pinId: string | null;
+  slowS: number;
+  quiet: boolean;
+  hidden: ReadonlySet<string>;
+}
+function hostOf(st: RoomStore, hostId: string): HostState {
+  const ops = st.all().filter((m) => m.kind === "host" && m.senderId === hostId).sort((a, b) => a.sentTime - b.sentTime);
+  const last = (op: string) => ops.filter((m) => m.payload?.op === op).at(-1)?.payload;
+  return {
+    pinId: String(last("pin")?.id ?? "") || null,
+    slowS: Number(last("slow")?.secs) || 0,
+    quiet: last("quiet")?.on === true,
+    hidden: new Set(ops.filter((m) => m.payload?.op === "hide").map((m) => String(m.payload?.id ?? ""))),
+  };
 }
 /** The latest Sync Check and its taps. Control messages, readable even while locked. */
 export interface SyncState {
@@ -106,9 +127,14 @@ const anchorsOf = (st: RoomStore): Anchor[] =>
     .all()
     .filter((m) => m.kind === "anchor")
     .map((m) => ({ id: m.id, label: String(m.payload?.label ?? ""), matchTime: matchTime(m), senderId: m.senderId }));
-const snapshot = (st: RoomStore, myId: string): Snapshot => ({
-  ...((c) => ({ call: c.current, callBoard: c.board }))(callsOf(st.all(), (id) => st.isRevealed(id), myId)),
-  view: st.view(),
+const snapshot = (st: RoomStore, myId: string, hostId?: string): Snapshot => {
+  const host = hostId ? hostOf(st, hostId) : null;
+  // In a creator room only the host's polls count.
+  const msgs = hostId ? st.all().filter((m) => m.kind !== "call" || m.senderId === hostId) : st.all();
+  return {
+  ...((c) => ({ call: c.current, callBoard: c.board }))(callsOf(msgs, (id) => st.isRevealed(id), myId)),
+  host,
+  view: host?.hidden.size ? st.view().filter((v) => !host.hidden.has(v.id)) : st.view(),
   lockedCount: st.lockedCount(),
   lagMs: st.effectiveLag(),
   pending: st.pending(),
@@ -118,7 +144,8 @@ const snapshot = (st: RoomStore, myId: string): Snapshot => ({
   paused: st.paused,
   firstAt: ((m) => (m ? matchTime(m) : null))(st.all().find((m) => m.kind === "text")),
   ...((revealed) => ({ moments: findMoments(revealed), syncObs: observe(revealed, myId) }))(st.all().filter((m) => st.isRevealed(m.id))),
-});
+  };
+};
 
 /** A roar that just reached my screen. */
 export interface RoarHit {
@@ -157,6 +184,7 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     syncObs: [],
     call: null,
     callBoard: [],
+    host: null,
   });
   const [heldBack, setHeldBack] = useState(0);
   const [status, setStatus] = useState<RoomStatus>("connecting");
@@ -174,26 +202,26 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     const offs: (() => void)[] = [];
 
     const noteVisible = (msgs: ChatMsg[]) => {
-      const others = msgs.filter((m) => m.kind === "text" && m.senderId !== s.guestId);
+      const others = msgs.filter((m) => isChat(m) && m.senderId !== s.guestId);
       if (!others.length) return;
       const last = others[others.length - 1];
-      setAnnounce({ name: last.senderName, text: last.text ?? "" });
+      setAnnounce({ name: last.senderName, text: last.kind === "voice" ? "🎙️" : (last.text ?? "") });
       if (document.visibilityState === "hidden") setUnseen((n) => n + others.length);
     };
 
     const store: RoomStore = new RoomStore(s.guestId, startLag, now, {
       // Replays would count every old message as a "spoiler blocked", so they track nothing here.
-      onLocked: (m) => !replay && m.kind === "text" && track("message_locked", s.code),
+      onLocked: (m) => !replay && isChat(m) && track("message_locked", s.code),
       onRevealed: (msgs, how) => {
-        if (!replay) for (const m of msgs) if (m.kind === "text") track(how === "spoil" ? "spoil_me" : "revealed_on_time", s.code);
+        if (!replay) for (const m of msgs) if (isChat(m)) track(how === "spoil" ? "spoil_me" : "revealed_on_time", s.code);
         if (how === "schedule") {
-          const held = msgs.filter((m) => m.kind === "text" && m.senderId !== s.guestId).length;
+          const held = msgs.filter((m) => isChat(m) && m.senderId !== s.guestId).length;
           if (held && !disposed) setHeldBack((n) => n + held);
         }
         noteVisible(msgs);
         if (how === "schedule") emitRoars(msgs);
       },
-      onChange: () => !disposed && setSnap(snapshot(store, s.guestId)),
+      onChange: () => !disposed && setSnap(snapshot(store, s.guestId, s.hostId)),
     });
     storeRef.current = store;
     emitRoarsRef.current = (msgs) => emitRoars(msgs);
@@ -258,6 +286,7 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
         await syncClock();
         if (disposed) return;
         offs.push(transport.onMessages(ingest));
+        offs.push(transport.onDeleted((ids) => store.remove(ids)));
         offs.push(
           transport.onStatus((st) => {
             if (disposed) return;
@@ -322,6 +351,18 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     [s.code, s.name, s.avatar],
   );
 
+  const sendVoice = useCallback(
+    async (file: File, durS: number) => {
+      const store = storeRef.current;
+      const tr = transportRef.current;
+      if (!store || !tr) throw new Error("not connected");
+      const m = parseIncoming(await tr.sendVoice(file, durS, encodeTextExtra(store.effectiveLag(), s.name, s.avatar)));
+      if (m) store.add([m]);
+      track("voice_sent", s.code, { durS });
+    },
+    [s.code, s.name, s.avatar],
+  );
+
   const sendRoar = useCallback(
     async (intensity: 1 | 2 | 3, dur: number) => {
       const store = storeRef.current;
@@ -356,7 +397,7 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
 
   /** Sends an SB:* message stamped with my lag and adds it to my store. */
   const sendSb = useCallback(
-    async <K extends "call" | "callvote" | "callresult" | "anchor">(kind: K, p: Omit<SbPayload<K>, "v" | "lag" | "n" | "a">) => {
+    async <K extends "call" | "callvote" | "callresult" | "anchor" | "host">(kind: K, p: Omit<SbPayload<K>, "v" | "lag" | "n" | "a">) => {
       const store = storeRef.current;
       const tr = transportRef.current;
       if (!store || !tr) throw new Error("not connected");
@@ -382,6 +423,8 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     },
     [sendSb, s.code],
   );
+  /** Creator-room host controls. */
+  const hostOp = useCallback((op: "pin" | "slow" | "hide" | "quiet", p: { id?: string; secs?: number; on?: boolean } = {}) => sendSb("host", { op, ...p }), [sendSb]);
   const answerCall = useCallback((callId: string, answer: number) => sendSb("callresult", { callId, answer }), [sendSb]);
 
   const syncTap = useCallback(
@@ -435,6 +478,7 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     announce,
     clockOffset,
     sendText,
+    sendVoice,
     sendRoar,
     startSyncCheck,
     syncTap,
@@ -442,6 +486,9 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     endMatch,
     pickCall,
     answerCall,
+    hostOp,
+    /** Drop recalled messages locally right away (others get Nexconn's delete event or the host's hide op). */
+    removeMsgs: (ids: string[]) => storeRef.current?.remove(ids),
     setLag,
     spoil: (id: string) => storeRef.current?.spoil(id),
     spoilAll: () => storeRef.current?.spoilAll(),

@@ -24,22 +24,25 @@ import { AloneCard, PrematchChecklist, TryDemoLink } from "@/components/RoomCard
 import { SyncCheckCard, SyncStartSheet } from "@/components/SyncCheck";
 import { Toggle } from "@/components/Toggle";
 import { TryPanel } from "@/components/TryPanel";
+import { VoiceButton } from "@/components/VoiceButton";
 import { WaveSheet } from "@/components/WaveSheet";
 import { Crowd } from "@/lib/audio/crowd";
 import { InvitePanel } from "@/components/InvitePanel";
 import { LagSheet } from "@/components/LagSheet";
 import { ProfileFields } from "@/components/ProfileFields";
 import { Sheet } from "@/components/Sheet";
-import { errorText, startSession } from "@/lib/client/api";
+import { errorText, moderateApi, startSession } from "@/lib/client/api";
 import { setMetricsUser, track } from "@/lib/client/metrics";
 import { loadBlocked, loadProfile, loadRoomPrefs, loadRoomStr, loadSetting, loadStand, rememberRoom, saveBlocked, saveProfile, saveRoomStr, saveSetting, saveStand } from "@/lib/client/storage";
-import { AVATARS, CHIP_PACKS, END_LABELS, FEATURES, LAG_SOURCES, asChipPack, asSport, chipsFor, type Sport, STADIUM_STANDS, type StandId } from "@/lib/config";
+import { AVATARS, CHIP_PACKS, END_LABELS, FEATURES, SLOW_MODES, LAG_SOURCES, asChipPack, asSport, chipsFor, type Sport, STADIUM_STANDS, type StandId } from "@/lib/config";
 import { useNow } from "@/lib/client/useNow";
 import { useT } from "@/lib/i18n/client";
 import { useRoom, type RoomSession } from "@/lib/room/useRoom";
 import { suggestSync } from "@/lib/timing/autosync";
 import { reachedAllAt } from "@/lib/timing/wave";
 import { TRY_BOTS } from "@/lib/try-script";
+import { isProfane, maskProfanity } from "@/lib/profanity";
+import type { ViewItem } from "@/lib/timing/room-store";
 
 const DEFAULT_SOURCE = LAG_SOURCES.find((s) => s.id === "streaming")!;
 const TV_SOURCE = LAG_SOURCES.find((s) => s.id === "tv")!;
@@ -156,6 +159,7 @@ export function RoomClient({
         area: res.area,
         ephemeral: second,
         stand: kind === "stadium" ? loadStand(room.code, res.guestId) : undefined,
+        hostId: kind === "creator" && FEATURES.creatorRooms ? ownerId : undefined,
       });
       setPhase("room");
     } catch (e) {
@@ -334,6 +338,8 @@ function RoomView({
   const [catchupOpen, setCatchupOpen] = useState(false);
   const [waveSeen, setWaveSeen] = useState<string | null>(null);
   const [cardSeen, setCardSeen] = useState<string | null>(null);
+  const [hostTarget, setHostTarget] = useState<ViewItem | null>(null);
+  const [hostNote, setHostNote] = useState<string | null>(null);
   /** Observation count when the auto-sync hint was dismissed; it returns only after new evidence. */
   const [calDismissedAt, setCalDismissedAt] = useState(0);
   const [origin, setOrigin] = useState("");
@@ -395,6 +401,14 @@ function RoomView({
   const others = boardEntries.filter((e) => e.senderId !== session.guestId && !e.senderId.startsWith("bot_")).length;
   const alone = !isTry && !replay && room.ready && others === 0 && (watching ?? 1) <= 1;
   const isOwner = !!ownerId && ownerId === session.guestId;
+  // Creator room: one host, many fans, each on their own delay.
+  const creator = !!session.hostId;
+  const isHost = creator && isOwner;
+  const host = room.host;
+  // Fans' words are masked on screen; the host's commentary is shown as written.
+  if (creator) view = view.map((v) => (v.text && v.kind === "text" && v.senderId !== session.hostId ? { ...v, text: maskProfanity(v.text) } : v));
+  const pinned = host?.pinId ? view.find((v) => v.id === host.pinId && !v.locked) : undefined;
+  const fanQuiet = creator && !isHost && !!host?.quiet;
   const endLabel = END_LABELS[sport];
   const canRecap = !isTry && !replay && !session.demo;
   // The end-of-match anchor opens the recap offer only once it has reached *my* screen.
@@ -435,6 +449,33 @@ function RoomView({
           ⋯
         </button>
       </header>
+
+      {creator && (
+        <div className="flex items-center gap-2 border-b border-line bg-surface px-3 py-1.5 text-xs">
+          <span className="rounded-full bg-accent px-2 py-0.5 font-semibold text-accent-ink">{t.creator.badge}</span>
+          <span className="min-w-0 flex-1 truncate text-muted">{isHost ? t.creator.youHost : t.creator.fanHelp}</span>
+          {!!host?.slowS && <span className="shrink-0 text-muted">🐢 {t.creator.slowOn(host.slowS)}</span>}
+        </div>
+      )}
+      {pinned && (
+        <div className="flex items-center gap-2 border-b border-line bg-surface-2 px-3 py-2 text-sm">
+          <span aria-hidden>📌</span>
+          <p className="min-w-0 flex-1 truncate">
+            <span className="text-muted">{pinned.senderName}: </span>
+            {pinned.voice ? "🎙️" : pinned.text}
+          </p>
+          {isHost && (
+            <button onClick={() => room.hostOp("pin", { id: "" }).catch(() => undefined)} aria-label={t.creator.unpin} className="rounded-full px-2 text-muted">
+              ✕
+            </button>
+          )}
+        </div>
+      )}
+      {fanQuiet && (
+        <p role="status" className="border-b border-line bg-surface-2 px-3 py-2 text-center text-sm">
+          🤫 {t.creator.quietFan}
+        </p>
+      )}
 
       {onStand && (
         <nav aria-label={t.stadium.stands} className="flex items-center gap-2 overflow-x-auto border-b border-line px-3 py-2 text-sm">
@@ -556,7 +597,15 @@ function RoomView({
           <TryDemoLink />
         </section>
       ) : (
-        <ChatTimeline items={view} clockOffset={room.clockOffset} announce={room.announce} onSpoil={room.spoil} />
+        <ChatTimeline
+          items={view}
+          clockOffset={room.clockOffset}
+          announce={room.announce}
+          onSpoil={room.spoil}
+          autoplay={soundOn && !muted}
+          hostId={session.hostId}
+          onHostAction={isHost ? setHostTarget : undefined}
+        />
       )}
       </div>
 
@@ -606,7 +655,9 @@ function RoomView({
 
       <div className="contents lg:col-start-2 lg:row-start-3 lg:block">
       <Composer
-        disabled={!canChat}
+        disabled={!canChat || fanQuiet}
+        cooldownS={creator && !isHost ? (host?.slowS ?? 0) : 0}
+        validate={creator && !isHost ? (v) => (isProfane(v) ? t.creator.blocked : null) : undefined}
         onSend={room.sendText}
         chips={chipsFor(sport, pack)}
         chipsLead={
@@ -631,6 +682,7 @@ function RoomView({
           )
         }
       >
+        {FEATURES.voiceNotes && !isTry && <VoiceButton disabled={!canChat} onSend={room.sendVoice} />}
         <RoarButton disabled={!canChat} onStart={() => !soundOn && !muted && unlockSound()} onRoar={(i, d) => room.sendRoar(i, d).catch(() => undefined)} />
       </Composer>
       </div>
@@ -680,7 +732,39 @@ function RoomView({
           >
             {t.room.invite}
           </button>
-          {FEATURES.callIt && !replay && (
+          {isHost && (
+            <div className="rounded-2xl border border-line bg-surface-2 p-3 text-sm">
+              <p className="font-semibold">🐢 {t.creator.slow}</p>
+              <p className="text-xs text-muted">{t.creator.slowHelp}</p>
+              <div role="group" aria-label={t.creator.slow} className="mt-2 flex gap-2">
+                {SLOW_MODES.map((s) => (
+                  <button
+                    key={s}
+                    aria-pressed={(host?.slowS ?? 0) === s}
+                    onClick={() => room.hostOp("slow", { secs: s }).catch(() => undefined)}
+                    className="rounded-full border border-line px-3 py-1 aria-pressed:border-accent aria-pressed:bg-accent/15"
+                  >
+                    {s === 0 ? t.creator.off : `${s}s`}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {isHost && session.key && (
+            <Toggle
+              label={`🤫 ${t.creator.quiet}`}
+              help={t.creator.quietHelp}
+              on={!!host?.quiet}
+              onChange={(on) => {
+                const auth = { guestId: session.guestId, key: session.key! };
+                moderateApi(auth, session.code, session.guestId, on ? "quiet" : "unquiet")
+                  .then(() => room.hostOp("quiet", { on }))
+                  .catch((e) => setHostNote(errorText(e)));
+              }}
+            />
+          )}
+          {hostNote && <p role="alert" className="text-sm text-danger">{hostNote}</p>}
+          {FEATURES.callIt && !replay && (!creator || isHost) && (
             <button onClick={() => (setMenuOpen(false), setCallOpen(true))} className="rounded-2xl border border-line bg-surface-2 px-4 py-3 text-left">
               {t.call.menu}
             </button>
@@ -807,6 +891,41 @@ function RoomView({
           moments={FEATURES.wave ? room.moments : []}
           onWave={FEATURES.wave ? () => (setRecapOpen(false), setWaveOpen(true)) : undefined}
         />
+      )}
+
+      {isHost && (
+        <Sheet open={!!hostTarget} onClose={() => setHostTarget(null)} title={t.creator.actionsTitle}>
+          {hostTarget && (
+            <div className="mt-3 flex flex-col gap-2">
+              <p className="truncate text-sm text-muted">
+                {hostTarget.senderName}: {hostTarget.voice ? "🎙️" : hostTarget.text}
+              </p>
+              {!hostTarget.locked && (
+                <button
+                  onClick={() => (room.hostOp("pin", { id: hostTarget.id }).catch(() => undefined), setHostTarget(null))}
+                  className="rounded-2xl border border-line bg-surface-2 px-4 py-3 text-left"
+                >
+                  📌 {t.creator.pin}
+                </button>
+              )}
+              {session.key && (
+                <button
+                  onClick={() => {
+                    const target = hostTarget;
+                    setHostTarget(null);
+                    moderateApi({ guestId: session.guestId, key: session.key! }, session.code, target.senderId, "recall", { messageId: target.id })
+                      // Nexconn deletes it for everyone; the hide op covers clients that don't get the delete event.
+                      .then(() => (room.removeMsgs([target.id]), room.hostOp("hide", { id: target.id })))
+                      .catch((e) => setHostNote(errorText(e)));
+                  }}
+                  className="rounded-2xl border border-danger/60 bg-danger/10 px-4 py-3 text-left"
+                >
+                  🗑 {t.creator.recall}
+                </button>
+              )}
+            </div>
+          )}
+        </Sheet>
       )}
 
       <SyncStartSheet open={syncOpen} onClose={() => setSyncOpen(false)} onStart={room.startSyncCheck} />

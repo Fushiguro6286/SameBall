@@ -43,7 +43,7 @@ export async function startSession(req: SessionReq) {
   }
 }
 
-export const createRoomApi = (req: Auth & { roomName: string; sport: string; startsAt?: string }) =>
+export const createRoomApi = (req: Auth & { roomName: string; sport: string; startsAt?: string; creator?: boolean }) =>
   post<{ code: string; channelId: string; name: string; sport: string }>("/api/rooms", req);
 
 export const startTryApi = (req: { guestId?: string; key?: string; name?: string; avatar?: string }) =>
@@ -52,8 +52,8 @@ export const tryStartApi = (a: Auth, code: string) => post<{ ok: true }>("/api/t
 export const tryStepApi = (a: Auth, code: string, step: number) => post<{ ok: true }>("/api/try/step", { ...a, code, step });
 
 export const presenceApi = (a: Auth, code: string) => post<{ watching: number }>("/api/presence", { ...a, code });
-export const moderateApi = (a: Auth, code: string, targetId: string, action: "mute" | "remove") =>
-  post<{ ok: true }>("/api/moderate", { ...a, code, targetId, action });
+export const moderateApi = (a: Auth, code: string, targetId: string, action: "mute" | "remove" | "recall" | "quiet" | "unquiet", msg?: { messageId: string; sentAt?: number }) =>
+  post<{ ok: true }>("/api/moderate", { ...a, code, targetId, action, ...msg });
 export const reportApi = (a: Auth, code: string, targetId: string, reason?: string) => post<{ ok: true }>("/api/report", { ...a, code, targetId, reason });
 
 export const catchupApi = (a: Auth, code: string, lag: number, msgs: { name: string; text: string; matchTime: number; lagS?: number; event?: boolean }[]) =>

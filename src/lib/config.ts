@@ -90,6 +90,8 @@ export const FEATURES = {
   regionalChips: process.env.NEXT_PUBLIC_FEATURE_REGIONAL_CHIPS === "1",
   couchMode: process.env.NEXT_PUBLIC_FEATURE_COUCH_MODE === "1",
   momentCards: process.env.NEXT_PUBLIC_FEATURE_MOMENT_CARDS === "1",
+  voiceNotes: process.env.NEXT_PUBLIC_FEATURE_VOICE_NOTES === "1",
+  creatorRooms: process.env.NEXT_PUBLIC_FEATURE_CREATOR_ROOMS === "1",
 };
 
 /** Anchor the room creator posts to end the match (each viewer's recap opens when it reaches their screen). */
@@ -100,5 +102,8 @@ export const END_LABELS: Record<Sport, string> = {
   esports: "GG · Match over",
   other: "Match over",
 };
+
+/** Creator rooms: slow-mode choices for fans, in seconds (0 = off). */
+export const SLOW_MODES = [0, 10, 30, 60] as const;
 
 export const GITHUB_URL = "https://github.com/Fushiguro6286/SameBall";
