@@ -8,6 +8,7 @@ import { saveRoomPrefs } from "../client/storage";
 import { measureOffset } from "../timing/clock";
 import { matchTime, revealAt, type ChatMsg } from "../timing/engine";
 import type { Pending } from "../timing/hype";
+import type { Tap } from "../timing/sync-solver";
 import { RoomStore, type ViewItem } from "../timing/room-store";
 import { createLocalTransport } from "../transport/local";
 import { createNexconnTransport } from "../transport/nexconn";
@@ -39,6 +40,30 @@ interface Snapshot {
   pending: Pending[];
   anchors: Anchor[];
   lags: MemberLag[];
+  sync: SyncState | null;
+}
+/** The latest Sync Check and its taps. Control messages, readable even while locked. */
+export interface SyncState {
+  checkId: string;
+  label: string;
+  startedBy: string;
+  startedAt: number;
+  taps: Tap[];
+}
+function syncOf(st: RoomStore): SyncState | null {
+  const all = st.all();
+  const check = all.filter((m) => m.kind === "synccheck").sort((a, b) => a.sentTime - b.sentTime).at(-1);
+  if (!check) return null;
+  const checkId = String(check.payload?.checkId ?? "");
+  return {
+    checkId,
+    label: String(check.payload?.label ?? ""),
+    startedBy: check.senderName,
+    startedAt: check.sentTime,
+    taps: all
+      .filter((m) => m.kind === "synctap" && m.payload?.checkId === checkId)
+      .map((m) => ({ senderId: m.senderId, sentTime: m.sentTime, lag: m.lag ?? 0 })),
+  };
 }
 /** Each member's latest lag stamp (from any of their messages), for the Lag Leaderboard. */
 export interface MemberLag {
@@ -71,6 +96,7 @@ const snapshot = (st: RoomStore): Snapshot => ({
   pending: st.pending(),
   anchors: anchorsOf(st),
   lags: lagsOf(st),
+  sync: syncOf(st),
 });
 
 /** A roar that just reached my screen. */
@@ -93,7 +119,7 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
   const sourceRef = useRef(initialSource);
   const lagTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const emitRoarsRef = useRef<(msgs: ChatMsg[]) => void>(() => {});
-  const [snap, setSnap] = useState<Snapshot>({ view: [], lockedCount: 0, lagMs: initialLagMs, pending: [], anchors: [], lags: [] });
+  const [snap, setSnap] = useState<Snapshot>({ view: [], lockedCount: 0, lagMs: initialLagMs, pending: [], anchors: [], lags: [], sync: null });
   const [heldBack, setHeldBack] = useState(0);
   const [status, setStatus] = useState<RoomStatus>("connecting");
   const [attempt, setAttempt] = useState(0);
@@ -271,6 +297,34 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     [s.code, s.name, s.avatar],
   );
 
+  const startSyncCheck = useCallback(
+    async (label: string) => {
+      const store = storeRef.current;
+      const tr = transportRef.current;
+      if (!store || !tr) throw new Error("not connected");
+      const checkId = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+      const raw = await tr.sendCustom(
+        SB_TYPES.synccheck,
+        sbContent("synccheck", { lag: store.effectiveLag(), checkId, label: label.slice(0, 60), n: s.name, a: s.avatar }),
+      );
+      const m = parseIncoming(raw);
+      if (m) store.add([m]);
+    },
+    [s.name, s.avatar],
+  );
+
+  const syncTap = useCallback(
+    async (checkId: string) => {
+      const store = storeRef.current;
+      const tr = transportRef.current;
+      if (!store || !tr) throw new Error("not connected");
+      const raw = await tr.sendCustom(SB_TYPES.synctap, sbContent("synctap", { lag: store.effectiveLag(), checkId, n: s.name, a: s.avatar }));
+      const m = parseIncoming(raw);
+      if (m) store.add([m]);
+    },
+    [s.name, s.avatar],
+  );
+
   const setLag = useCallback(
     (ms: number, source: string) => {
       const store = storeRef.current;
@@ -310,6 +364,8 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     clockOffset,
     sendText,
     sendRoar,
+    startSyncCheck,
+    syncTap,
     setLag,
     spoil: (id: string) => storeRef.current?.spoil(id),
     spoilAll: () => storeRef.current?.spoilAll(),

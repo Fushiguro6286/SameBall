@@ -129,6 +129,22 @@ export const en = {
     secondName: "Second screen",
   },
 
+  sync: {
+    title: "Sync check",
+    menu: "Start a sync check",
+    help: "Name a moment everyone will see, like the end of this over. Everyone taps NOW when it hits their screen, and SameBall works out each feed's delay.",
+    presets: ["End of this over", "Next goal kick", "Next restart", "Next replay"],
+    labelField: "Or type a moment",
+    start: "Start",
+    prompt: (who: string, label: string) => `${who} started a sync check. Tap NOW when you see: “${label}”`,
+    now: "NOW",
+    waiting: (n: number) => `Got your tap. Waiting for friends… (${n} tapped)`,
+    apply: (s: number) => `Apply new lag: ${s}s?`,
+    inSync: "Your delay is already right. Nice.",
+    yes: "Apply",
+    keep: "Keep mine",
+  },
+
   board: {
     title: "Lag leaderboard",
     help: "How far each friend's feed is behind the fastest one in the room.",

@@ -10,6 +10,7 @@ import { FeedbackPrompt } from "@/components/FeedbackPrompt";
 import { HypeStrip } from "@/components/HypeStrip";
 import { LagBoard, useWatching } from "@/components/LagBoard";
 import { RoarButton } from "@/components/RoarButton";
+import { SyncCheckCard, SyncStartSheet } from "@/components/SyncCheck";
 import { Toggle } from "@/components/Toggle";
 import { TryPanel } from "@/components/TryPanel";
 import { Crowd } from "@/lib/audio/crowd";
@@ -235,6 +236,7 @@ function RoomView({
   const [lagOpen, setLagOpen] = useState(prefs.first);
   const [menuOpen, setMenuOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [syncOpen, setSyncOpen] = useState(false);
   const [confirmAll, setConfirmAll] = useState(false);
   const [origin, setOrigin] = useState("");
 
@@ -300,6 +302,19 @@ function RoomView({
         />
       )}
 
+      <SyncCheckCard
+        sync={room.sync}
+        myId={session.guestId}
+        lagMs={room.lagMs}
+        clockOffset={room.clockOffset}
+        roomCode={session.code}
+        onTap={room.syncTap}
+        onApply={(ms) => {
+          setSource("custom");
+          room.setLag(ms, "custom");
+        }}
+      />
+
       {empty && !isTry ? (
         <section className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
           <h2 className="font-display text-4xl">{t.empty.title}</h2>
@@ -347,6 +362,13 @@ function RoomView({
           >
             {t.room.invite}
           </button>
+          <button
+            onClick={() => (setMenuOpen(false), setSyncOpen(true))}
+            disabled={!room.ready}
+            className="rounded-2xl border border-line bg-surface-2 px-4 py-3 text-left disabled:opacity-50"
+          >
+            {t.sync.menu}
+          </button>
           {confirmAll ? (
             <div className="rounded-2xl border border-danger/60 bg-danger/10 p-3 text-sm">
               <p>{t.room.revealAllConfirm}</p>
@@ -390,6 +412,8 @@ function RoomView({
           />
         </div>
       </Sheet>
+
+      <SyncStartSheet open={syncOpen} onClose={() => setSyncOpen(false)} onStart={room.startSyncCheck} />
 
       <Sheet open={inviteOpen} onClose={() => setInviteOpen(false)} title={t.empty.title}>
         <div className="mt-4">{origin && <InvitePanel url={inviteUrl} roomName={roomName} />}</div>
