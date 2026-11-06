@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ROOM_CODE_RE } from "@/lib/guard";
 import { t } from "@/lib/i18n";
+import { aiConfig } from "@/lib/ai";
 import { getRoom } from "@/lib/rooms";
 import { RoomClient } from "./RoomClient";
 
@@ -42,6 +43,7 @@ async function RoomLoader(props: PageProps<"/r/[code]">) {
       kind={room.kind}
       startsAt={room.kind === "room" ? room.startsAt?.getTime() : undefined}
       ownerId={room.createdBy}
+      aiCatchup={!!aiConfig()}
       demo={false}
     />
   );

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { CalibrationCard } from "@/components/CalibrationCard";
+import { CatchupSheet } from "@/components/CatchupSheet";
 import { ChatTimeline } from "@/components/ChatTimeline";
 import { Composer } from "@/components/Composer";
 import { ConnBanner } from "@/components/ConnBanner";
@@ -74,6 +75,7 @@ export function RoomClient({
   kind = "room",
   startsAt,
   ownerId,
+  aiCatchup = false,
   demo,
 }: {
   code: string;
@@ -82,6 +84,8 @@ export function RoomClient({
   kind?: string;
   startsAt?: number;
   ownerId?: string;
+  /** The server has an AI provider configured. */
+  aiCatchup?: boolean;
   demo: boolean;
 }) {
   const router = useRouter();
@@ -174,6 +178,7 @@ export function RoomClient({
         isTry={kind === "try"}
         second={second}
         replay={replay}
+        catchup={FEATURES.aiCatchup && aiCatchup}
         startsAt={startsAt}
         ownerId={ownerId}
         notice={notice}
@@ -218,6 +223,7 @@ function RoomView({
   isTry,
   second,
   replay,
+  catchup,
   startsAt,
   ownerId,
   notice,
@@ -228,6 +234,7 @@ function RoomView({
   isTry: boolean;
   second: boolean;
   replay: boolean;
+  catchup: boolean;
   startsAt?: number;
   ownerId?: string;
   notice: string | null;
@@ -288,6 +295,7 @@ function RoomView({
   const [syncOpen, setSyncOpen] = useState(false);
   const [confirmAll, setConfirmAll] = useState(false);
   const [waveOpen, setWaveOpen] = useState(false);
+  const [catchupOpen, setCatchupOpen] = useState(false);
   const [waveSeen, setWaveSeen] = useState<string | null>(null);
   /** Shared-moment count when the calibration hint was dismissed; it returns only after new evidence. */
   const [calDismissedAt, setCalDismissedAt] = useState(0);
@@ -491,6 +499,11 @@ function RoomView({
           >
             {t.room.invite}
           </button>
+          {catchup && session.key && (
+            <button onClick={() => (setMenuOpen(false), setCatchupOpen(true))} className="rounded-2xl border border-line bg-surface-2 px-4 py-3 text-left">
+              {t.catchup.menu}
+            </button>
+          )}
           {FEATURES.wave && room.moments.length > 0 && (
             <button onClick={() => (setMenuOpen(false), setWaveOpen(true))} className="rounded-2xl border border-line bg-surface-2 px-4 py-3 text-left">
               {t.wave.menu} ({room.moments.length})
@@ -553,6 +566,17 @@ function RoomView({
           />
         </div>
       </Sheet>
+
+      {catchup && session.key && (
+        <CatchupSheet
+          open={catchupOpen}
+          onClose={() => setCatchupOpen(false)}
+          auth={{ guestId: session.guestId, key: session.key }}
+          code={session.code}
+          items={view}
+          lagMs={room.lagMs}
+        />
+      )}
 
       {FEATURES.wave && (
         <WaveSheet open={waveOpen} onClose={() => setWaveOpen(false)} moments={room.moments} members={waveMembers} roomName={roomName} code={session.code} />

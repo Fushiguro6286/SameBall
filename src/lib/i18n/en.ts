@@ -173,6 +173,16 @@ export const en = {
     dismiss: "Dismiss",
   },
 
+  catchup: {
+    menu: "✨ What did I miss?",
+    title: "What did I miss?",
+    loading: "Reading the chat you've already seen…",
+    quiet: "Not much has been said yet.",
+    failed: "Couldn't summarize right now. Try again in a moment.",
+    note: "Only messages already revealed on your screen are used, so nothing ahead of you gets spoiled. Written by AI, so it can be wrong.",
+    refresh: "Refresh",
+  },
+
   calibrate: {
     later: (s: number, n: number) => `🎯 From your squad's reactions at ${n} moments, your screen looks about ${s}s further behind than your setting.`,
     earlier: (s: number, n: number) => `🎯 From your squad's reactions at ${n} moments, your screen looks about ${s}s closer to live than your setting.`,

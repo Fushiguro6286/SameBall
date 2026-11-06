@@ -56,6 +56,9 @@ export const moderateApi = (a: Auth, code: string, targetId: string, action: "mu
   post<{ ok: true }>("/api/moderate", { ...a, code, targetId, action });
 export const reportApi = (a: Auth, code: string, targetId: string, reason?: string) => post<{ ok: true }>("/api/report", { ...a, code, targetId, reason });
 
+export const catchupApi = (a: Auth, code: string, lag: number, msgs: { name: string; text: string; matchTime: number }[]) =>
+  post<{ bullets: string[] }>("/api/catchup", { ...a, code, lag, msgs });
+
 export function errorText(e: unknown): string {
   if (e instanceof ApiError) {
     if (e.status === 429) return t.errors.rate;

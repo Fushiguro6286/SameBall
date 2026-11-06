@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { AVATARS, MESSAGE_MAX, NAME_MAX, ROOM_NAME_MAX, SPORTS } from "./config";
+import { AVATARS, CATCHUP_MAX_MSGS, MESSAGE_MAX, NAME_MAX, ROOM_NAME_MAX, SPORTS } from "./config";
+import { MAX_LAG_MS } from "./timing/engine";
 
 const guestId = z.string().regex(/^g_[A-Za-z0-9]{20}$/);
 const roomCode = z.string().regex(/^[A-HJ-NP-Z2-9]{6}$/);
@@ -57,6 +58,7 @@ export const METRIC_EVENTS = [
   "sync_check_done",
   "replay_started",
   "wave_shared",
+  "catchup_used",
   "feedback",
 ] as const;
 
@@ -104,3 +106,14 @@ export const ReportReq = z.object({ guestId, key, code: roomCode, targetId: z.st
 export const DeleteDataReq = z.object({ guestId, key: key.optional() });
 
 export const textMessage = z.string().trim().min(1).max(MESSAGE_MAX);
+
+/** "What did I miss?": revealed messages only; the server re-checks each against `lag`. */
+export const CatchupReq = z.object({
+  guestId,
+  key,
+  code: roomCode,
+  lag: z.number().min(0).max(MAX_LAG_MS),
+  msgs: z
+    .array(z.object({ name: z.string().max(NAME_MAX), text: z.string().max(MESSAGE_MAX), matchTime: z.number().finite() }))
+    .max(CATCHUP_MAX_MSGS),
+});

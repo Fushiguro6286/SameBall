@@ -38,6 +38,8 @@ export const MESSAGE_MAX = 500;
 export const HISTORY_PAGES = 3; // x100 messages
 // shortcut: replay loads the newest 2,000 messages only; page on demand if real rooms get bigger.
 export const HISTORY_PAGES_REPLAY = 20;
+/** "What did I miss?" summarizes at most this many of the latest revealed messages. */
+export const CATCHUP_MAX_MSGS = 120;
 export const FEEDBACK_AFTER_MS = 20 * 60_000;
 
 /** P2 feature flags. Literal env names so Next inlines them at build time. */
@@ -45,4 +47,5 @@ export const FEATURES = {
   ghostCrowd: process.env.NEXT_PUBLIC_FEATURE_GHOST_CROWD === "1",
   wave: process.env.NEXT_PUBLIC_FEATURE_WAVE === "1",
   autoCalibration: process.env.NEXT_PUBLIC_FEATURE_AUTO_CALIBRATION === "1",
+  aiCatchup: process.env.NEXT_PUBLIC_FEATURE_AI_CATCHUP === "1",
 };
