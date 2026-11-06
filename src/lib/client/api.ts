@@ -56,7 +56,7 @@ export const moderateApi = (a: Auth, code: string, targetId: string, action: "mu
   post<{ ok: true }>("/api/moderate", { ...a, code, targetId, action });
 export const reportApi = (a: Auth, code: string, targetId: string, reason?: string) => post<{ ok: true }>("/api/report", { ...a, code, targetId, reason });
 
-export const catchupApi = (a: Auth, code: string, lag: number, msgs: { name: string; text: string; matchTime: number }[]) =>
+export const catchupApi = (a: Auth, code: string, lag: number, msgs: { name: string; text: string; matchTime: number; lagS?: number; event?: boolean }[]) =>
   post<{ bullets: string[] }>("/api/catchup", { ...a, code, lag, msgs });
 
 export function errorText(e: unknown): string {

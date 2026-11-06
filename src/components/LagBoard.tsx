@@ -42,6 +42,7 @@ export function LagBoard({
   code,
   isOwner,
   watching,
+  demoFriends = 0,
   blocked,
   onToggleBlock,
 }: {
@@ -51,6 +52,8 @@ export function LagBoard({
   code: string;
   isOwner: boolean;
   watching: number | null;
+  /** Judge Mode: bot friends in the room (they never heartbeat, so "watching now" would say 1). */
+  demoFriends?: number;
   blocked: ReadonlySet<string>;
   onToggleBlock: (id: string) => void;
 }) {
@@ -84,14 +87,14 @@ export function LagBoard({
           ))}
         </span>
         <span className="truncate">
-          {watching !== null && t.board.watching(watching)}
-          {watching !== null && me && " · "}
+          {demoFriends > 0 ? t.board.demoFriends(demoFriends) : watching !== null && t.board.watching(watching)}
+          {(demoFriends > 0 || watching !== null) && me && " · "}
           {me && `${t.room.you}: ${badgeText(t, me.badge)}`}
         </span>
       </button>
       <Sheet open={open} onClose={() => (setOpen(false), setActionsFor(null), setNote(null))} title={t.board.title}>
         <p className="mt-1 text-sm text-muted">{t.board.help}</p>
-        {watching !== null && <p className="mt-2 text-sm">{t.board.watching(watching)}</p>}
+        {(demoFriends > 0 || watching !== null) && <p className="mt-2 text-sm">{demoFriends > 0 ? t.board.demoFriends(demoFriends) : t.board.watching(watching!)}</p>}
         {note && (
           <p role="status" className="mt-2 text-sm text-accent">
             {note}

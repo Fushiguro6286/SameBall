@@ -6,6 +6,8 @@ import { FeaturedRooms } from "@/components/FeaturedRooms";
 import { HeroPhones } from "@/components/HeroPhones";
 import { LangToggle } from "@/components/Lang";
 import { MyRooms } from "@/components/MyRooms";
+import { NexconnBadge } from "@/components/NexconnBadge";
+import { GITHUB_URL } from "@/lib/config";
 import { t } from "@/lib/i18n";
 
 export default function Home() {
@@ -13,7 +15,10 @@ export default function Home() {
     <main className="floodlight flex flex-1 flex-col">
       <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-10 px-4 pb-16 pt-10">
         <header className="text-center">
-          <LangToggle className="mb-4" />
+          <div className="mb-4 flex flex-wrap items-center justify-center gap-2">
+            <NexconnBadge />
+            <LangToggle />
+          </div>
           <p className="font-display text-xl tracking-widest text-accent">{t.appName}</p>
           <h1 className="mt-2 font-display text-5xl leading-[0.95] sm:text-6xl"><Tx k="landing.heroTitle" /></h1>
           <p className="mx-auto mt-4 max-w-md text-muted"><Tx k="landing.heroBody" /></p>
@@ -56,13 +61,19 @@ export default function Home() {
         <MyRooms />
         <CreateRoomForm />
 
-        <footer className="flex gap-5 text-sm text-muted">
+        <footer className="flex flex-wrap justify-center gap-5 text-sm text-muted">
+          <Link href="/how-it-works" className="underline-offset-4 hover:underline">
+            <Tx k="landing.how" />
+          </Link>
           <Link href="/stats" className="underline-offset-4 hover:underline">
             <Tx k="landing.stats" />
           </Link>
           <Link href="/privacy" className="underline-offset-4 hover:underline">
             <Tx k="landing.privacy" />
           </Link>
+          <a href={GITHUB_URL} target="_blank" rel="noopener" className="underline-offset-4 hover:underline">
+            GitHub
+          </a>
         </footer>
       </div>
     </main>

@@ -11,7 +11,24 @@ import { Sheet } from "./Sheet";
 type State = { kind: "loading" } | { kind: "done"; bullets: string[] } | { kind: "error"; rate: boolean };
 
 /** Summarizes revealed messages only. Locked items carry no text, and the server re-checks each one against my lag. */
-export function CatchupSheet({ open, onClose, auth, code, items, lagMs }: { open: boolean; onClose: () => void; auth: Auth; code: string; items: ViewItem[]; lagMs: number }) {
+export function CatchupSheet({
+  open,
+  onClose,
+  auth,
+  code,
+  items,
+  lagMs,
+  lags,
+}: {
+  open: boolean;
+  onClose: () => void;
+  auth: Auth;
+  code: string;
+  items: ViewItem[];
+  lagMs: number;
+  /** Each member's feed delay, so the summary treats them as viewers. */
+  lags: { senderId: string; lag: number }[];
+}) {
   const t = useT();
   const [state, setState] = useState<State>({ kind: "loading" });
   const [run, setRun] = useState(0);
@@ -19,10 +36,16 @@ export function CatchupSheet({ open, onClose, auth, code, items, lagMs }: { open
   useEffect(() => {
     if (!open) return;
     let live = true;
+    const lagOf = new Map(lags.map((l) => [l.senderId, Math.round(l.lag / 1000)]));
+    // Revealed chat plus revealed match markers ("First ball"), never anything still locked for me.
     const msgs = items
-      .filter((v) => v.kind === "text" && !v.locked && !v.spoiled && v.text)
+      .filter((v) => !v.locked && !v.spoiled && v.text)
       .slice(-CATCHUP_MAX_MSGS)
-      .map((v) => ({ name: v.senderName, text: v.text!, matchTime: v.revealAt - lagMs }));
+      .map((v) =>
+        v.kind === "anchor"
+          ? { name: "match", text: v.text!, matchTime: v.revealAt - lagMs, event: true }
+          : { name: v.senderName, text: v.text!, matchTime: v.revealAt - lagMs, lagS: lagOf.get(v.senderId) },
+      );
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset to loading for each request
     setState({ kind: "loading" });
     catchupApi(auth, code, lagMs, msgs)

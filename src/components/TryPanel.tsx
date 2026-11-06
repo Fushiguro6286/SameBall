@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { NexconnBadge } from "./NexconnBadge";
 import { ApiError, tryStartApi, tryStepApi, type Auth } from "@/lib/client/api";
 import { useNow } from "@/lib/client/useNow";
 import { useT } from "@/lib/i18n/client";
@@ -10,6 +11,9 @@ import { TRY_ANCHOR_LABEL, TRY_BALLS, TRY_BOTS, TRY_END_T, TRY_SIX_T, TRY_STEPS,
 import type { Anchor } from "@/lib/room/useRoom";
 
 const BOT_IDS = new Set<string>(Object.values(TRY_BOTS).map((b) => b.id));
+
+/** After the feed is picked, the over starts by itself after this long (with "Start now" / "Not yet"). */
+const AUTO_START_MS = 3000;
 
 const ballLabel = (r: BallResult) => (r === "W" ? "W" : r === 0 ? "•" : String(r));
 
@@ -27,6 +31,7 @@ export function TryPanel({
   pending,
   heldBack,
   ready,
+  autoStart,
 }: {
   auth: Auth;
   code: string;
@@ -37,6 +42,8 @@ export function TryPanel({
   pending: Pending[];
   heldBack: number;
   ready: boolean;
+  /** The visitor has picked a feed: count down and start the over. */
+  autoStart: boolean;
 }) {
   const t = useT();
   const { guestId, key } = auth;
@@ -65,7 +72,12 @@ export function TryPanel({
     return () => clearInterval(id);
   }, [start, clockOffset, guestId, key, code]);
 
+  const [autoAt, setAutoAt] = useState<number | null>(null);
+  const [autoOff, setAutoOff] = useState(false);
+  const waiting = autoAt !== null && start === null && !starting;
+  const tick = useNow(waiting, 250);
   const begin = async () => {
+    setAutoAt(null);
     setStarting(true);
     setError(false);
     try {
@@ -76,6 +88,16 @@ export function TryPanel({
     }
   };
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- arm the countdown once the feed is picked
+    if (autoStart && ready && start === null && !autoOff) setAutoAt((a) => a ?? Date.now() + AUTO_START_MS);
+  }, [autoStart, ready, start, autoOff]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the countdown reached zero: start the over
+    if (waiting && tick >= (autoAt ?? Infinity)) begin();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [waiting, tick]);
+
   const lagS = Math.round(lagMs / 1000);
   const matchT = start === null ? null : (now - start - lagMs) / 1000; // what MY screen shows
   const score = scoreAt(matchT ?? -1);
@@ -84,7 +106,7 @@ export function TryPanel({
   const high = hypeHeat(pending, now).heat >= HYPE_HIGH;
 
   let coach: string;
-  if (start === null) coach = t.try.coachPick;
+  if (start === null) coach = waiting || starting ? t.try.coachAuto : t.try.coachPick;
   else if (lagS === 0) coach = t.try.coachFastest;
   else if (matchT !== null && matchT < 0) coach = t.try.coachBehind(lagS, Math.ceil(-matchT));
   else if (matchT !== null && matchT >= TRY_SIX_T && matchT < TRY_SIX_T + 6) coach = t.try.coachSix;
@@ -98,6 +120,7 @@ export function TryPanel({
       <section aria-live="polite" className="pop-in border-b border-line bg-surface px-4 py-4 text-center">
         <p className="font-display text-3xl leading-tight">{t.try.summary(heldBack)}</p>
         <p className="mt-1 text-sm text-muted">{t.try.summaryBody}</p>
+        <NexconnBadge className="mt-3" />
         <div className="mt-3 flex flex-wrap justify-center gap-2">
           <Link href="/#create" className="rounded-full bg-accent px-5 py-2.5 font-semibold text-accent-ink">
             {t.try.createCta}
@@ -140,15 +163,26 @@ export function TryPanel({
         </div>
         <div className="relative mt-2 flex h-9 items-center justify-center overflow-hidden rounded-xl bg-[linear-gradient(90deg,#0d3b1f,#14532d_50%,#0d3b1f)]">
           <div aria-hidden className="absolute inset-y-1 left-1/2 w-10 -translate-x-1/2 rounded bg-[#c8b07a]/50" />
-          <span className="relative text-xs font-semibold text-white/80">{t.try.feedLabel(lagS)}</span>
-          {flash !== null && (
-            <span key={String(score.last?.t)} className="reveal-flash absolute inset-0 grid place-items-center bg-black/40 font-display text-3xl text-accent">
+          {/* The burst replaces the feed label while it shows, so the two never overlap. */}
+          {flash === null ? (
+            <span className="relative text-xs font-semibold text-white/80">{t.try.feedLabel(lagS)}</span>
+          ) : (
+            <span key={String(score.last?.t)} className="reveal-flash absolute inset-0 grid place-items-center bg-black/60 font-display text-3xl text-accent">
               {t.try.result(flash)}
             </span>
           )}
         </div>
         <p className="mt-2 text-sm">{coach}</p>
-        {start === null ? (
+        {start === null && waiting ? (
+          <div className="mt-2 flex gap-2">
+            <button onClick={begin} className="flex-1 rounded-full bg-accent py-2.5 font-semibold text-accent-ink">
+              {t.try.startNow(Math.max(1, Math.ceil(((autoAt ?? tick) - tick) / 1000)))}
+            </button>
+            <button onClick={() => (setAutoAt(null), setAutoOff(true))} className="rounded-full border border-line px-4 py-2.5">
+              {t.try.notYet}
+            </button>
+          </div>
+        ) : start === null ? (
           <button
             onClick={begin}
             disabled={!ready || starting}

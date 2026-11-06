@@ -36,6 +36,14 @@ export function InvitePanel({ url, roomName }: { url: string; roomName: string }
             {t.empty.share}
           </button>
         )}
+        <a
+          href={`https://wa.me/?text=${encodeURIComponent(`${t.empty.shareText(roomName)} ${url}`)}`}
+          target="_blank"
+          rel="noopener"
+          className="rounded-full border border-line bg-surface-2 px-4 py-2.5"
+        >
+          {t.empty.whatsapp}
+        </a>
         <button onClick={copy} className="rounded-full border border-line bg-surface-2 px-4 py-2.5">
           <span aria-live="polite">{copied ? t.empty.copied : t.empty.copy}</span>
         </button>

@@ -1,7 +1,7 @@
 import { AiError, aiConfig, chat } from "@/lib/ai";
 import { CatchupReq } from "@/lib/api-schemas";
 import { checkKey } from "@/lib/auth";
-import { CATCHUP_SYSTEM, catchupPrompt, parseBullets, revealedOnly } from "@/lib/catchup";
+import { CATCHUP_SYSTEM, catchupPrompt, guardBullets, parseBullets, revealedOnly } from "@/lib/catchup";
 import { clientIp, rateLimit } from "@/lib/guard";
 import { body, fail, json } from "@/lib/http";
 
@@ -17,9 +17,10 @@ export async function POST(req: Request) {
 
   // The client already filtered to revealed messages; check again here with the lag it sent.
   const msgs = revealedOnly(b.msgs, b.lag, Date.now());
-  if (msgs.length < MIN_MSGS) return json({ bullets: [] });
+  if (msgs.filter((m) => !m.event).length < MIN_MSGS) return json({ bullets: [] });
   try {
-    const bullets = parseBullets(await chat(CATCHUP_SYSTEM, catchupPrompt(msgs)));
+    // Drop any bullet that turns a friend into a player ("Arjun hits a six").
+    const bullets = guardBullets(parseBullets(await chat(CATCHUP_SYSTEM, catchupPrompt(msgs))), msgs);
     if (!bullets.length) return fail(502, "ai_failed");
     return json({ bullets });
   } catch (e) {

@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Sport } from "@/lib/config";
 import { useT } from "@/lib/i18n/client";
 import { CALL_LOCK, type CallPoints, type CallState } from "@/lib/timing/callit";
 import { Sheet } from "./Sheet";
+
+/** A finished call shrinks to a one-line chip after this long, so it never sits over the chat. */
+const RESULT_SLIM_MS = 6000;
 
 /** The latest "Call it": pick before the moment reaches your screen; the asker locks and answers. */
 export function CallCard({
@@ -24,6 +27,13 @@ export function CallCard({
   const [hidden, setHidden] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [slim, setSlim] = useState<string | null>(null);
+  const resultId = call && call.answer !== null ? call.callId : null;
+  useEffect(() => {
+    if (!resultId) return;
+    const id = setTimeout(() => setSlim(resultId), RESULT_SLIM_MS);
+    return () => clearTimeout(id);
+  }, [resultId]);
   if (!call || hidden === call.callId) return null;
 
   const asker = call.askedBy.senderId === myId;
@@ -40,6 +50,24 @@ export function CallCard({
   };
   const won = call.answer !== null && call.winners.some((w) => w.senderId === myId);
   const myPoints = board.find((b) => b.senderId === myId)?.points ?? 0;
+  const outcome = won ? t.call.won(myPoints) : call.mine !== null ? t.call.lost : t.call.missed;
+
+  if (call.answer !== null && slim === call.callId)
+    return (
+      <div className="flex items-center gap-1 border-b border-line px-3 py-1.5">
+        <button
+          onClick={() => setSlim(null)}
+          aria-expanded={false}
+          aria-label={t.call.expand}
+          className="mx-auto min-w-0 max-w-xl flex-1 truncate rounded-full border border-line bg-surface-2 px-3 py-1 text-left text-sm"
+        >
+          🎯 {t.call.itWas(call.opts[call.answer] ?? "?")} · <span className={won ? "font-semibold text-accent" : "text-muted"}>{outcome}</span>
+        </button>
+        <button onClick={() => setHidden(call.callId)} aria-label={t.lag.close} className="px-1 text-lg leading-none text-muted">
+          ×
+        </button>
+      </div>
+    );
 
   return (
     <section aria-live="polite" className="pop-in border-b border-line bg-surface-2 px-4 py-3">
@@ -56,9 +84,7 @@ export function CallCard({
         {call.answer !== null ? (
           <div className="mt-2">
             <p className="font-display text-2xl">{t.call.itWas(call.opts[call.answer] ?? "?")}</p>
-            <p className={won ? "font-semibold text-accent" : "text-muted"}>
-              {won ? t.call.won(myPoints) : call.mine !== null ? t.call.lost : t.call.missed}
-            </p>
+            <p className={won ? "font-semibold text-accent" : "text-muted"}>{outcome}</p>
             {board.length > 0 && (
               <ol className="mt-2 flex flex-wrap gap-2 text-xs" aria-label={t.call.board}>
                 {board.slice(0, 5).map((b, i) => (

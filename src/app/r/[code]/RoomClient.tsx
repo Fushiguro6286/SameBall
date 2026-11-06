@@ -16,6 +16,8 @@ import { LangToggle } from "@/components/Lang";
 import { RoarButton } from "@/components/RoarButton";
 import { StartBanner } from "@/components/StartBanner";
 import { CallCard, CallStartSheet } from "@/components/CallIt";
+import { NexconnBadge } from "@/components/NexconnBadge";
+import { AloneCard, PrematchChecklist, TryDemoLink } from "@/components/RoomCards";
 import { SyncCheckCard, SyncStartSheet } from "@/components/SyncCheck";
 import { Toggle } from "@/components/Toggle";
 import { TryPanel } from "@/components/TryPanel";
@@ -33,6 +35,7 @@ import { useNow } from "@/lib/client/useNow";
 import { useT } from "@/lib/i18n/client";
 import { useRoom, type RoomSession } from "@/lib/room/useRoom";
 import { suggestLag } from "@/lib/timing/calibration";
+import { TRY_BOTS } from "@/lib/try-script";
 
 const DEFAULT_SOURCE = LAG_SOURCES.find((s) => s.id === "streaming")!;
 const TV_SOURCE = LAG_SOURCES.find((s) => s.id === "tv")!;
@@ -306,6 +309,10 @@ function RoomView({
   };
   const [source, setSource] = useState(prefs.source);
   const [lagOpen, setLagOpen] = useState(prefs.first && !replay);
+  /** Judge Mode starts the over a few seconds after the feed is picked. */
+  const [lagDone, setLagDone] = useState(!(prefs.first && !replay));
+  const [checklist, setChecklist] = useState(() => !isTry && !replay && !second && !loadSetting("prematchDone", false));
+  const [aloneHidden, setAloneHidden] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [syncOpen, setSyncOpen] = useState(false);
@@ -350,6 +357,8 @@ function RoomView({
   const lagHint = FEATURES.autoCalibration && !replay ? suggestLag(room.moments, session.guestId, room.lagMs) : null;
   const showWavePill = !!latestMoment && latestMoment.id !== waveSeen && waveNow - (latestMoment.matchTime + room.lagMs) < WAVE_FRESH_MS;
   const canChat = room.ready && (!replay || synced);
+  const others = boardEntries.filter((e) => e.senderId !== session.guestId && !e.senderId.startsWith("bot_")).length;
+  const alone = !isTry && !replay && room.ready && others === 0 && (watching ?? 1) <= 1;
 
   return (
     <div className="flex h-dvh flex-col">
@@ -367,6 +376,7 @@ function RoomView({
               code={session.code}
               isOwner={!!ownerId && ownerId === session.guestId}
               watching={watching}
+              demoFriends={isTry ? Object.keys(TRY_BOTS).length : 0}
               blocked={blocked}
               onToggleBlock={toggleBlock}
             />
@@ -408,6 +418,9 @@ function RoomView({
         </p>
       )}
 
+      <div className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:grid-rows-[minmax(0,auto)_minmax(0,1fr)_auto]">
+      {/* Laptops: match strip and cards on the left, chat on the right. Phones: one column, cards above the chat. */}
+      <div className="contents lg:col-start-1 lg:row-start-1 lg:block lg:overflow-y-auto lg:border-r lg:border-line">
       {isTry && (
         <TryPanel
           auth={{ guestId: session.guestId, key: session.key ?? "" }}
@@ -419,6 +432,7 @@ function RoomView({
           pending={pending}
           heldBack={room.heldBack}
           ready={room.ready}
+          autoStart={lagDone}
         />
       )}
 
@@ -447,6 +461,16 @@ function RoomView({
 
       {!replay && startsAt && origin && <StartBanner startsAt={startsAt} roomName={roomName} code={session.code} url={`${origin}/r/${session.code}`} />}
 
+      {checklist && (
+        <PrematchChecklist
+          onFeed={() => setLagOpen(true)}
+          onInvite={() => setInviteOpen(true)}
+          onDone={() => (setChecklist(false), saveSetting("prematchDone", true))}
+        />
+      )}
+
+      {alone && !empty && !aloneHidden && <AloneCard onInvite={() => setInviteOpen(true)} onDismiss={() => setAloneHidden(true)} />}
+
       {!replay && (
         <SyncCheckCard
           sync={room.sync}
@@ -465,16 +489,22 @@ function RoomView({
       {FEATURES.callIt && !replay && (
         <CallCard call={room.call} board={room.callBoard} myId={session.guestId} onPick={room.pickCall} onAnswer={room.answerCall} />
       )}
+      </div>
 
+      <div className="flex min-h-0 flex-1 flex-col lg:col-start-2 lg:row-span-2 lg:row-start-1">
       {empty && !isTry ? (
         <section className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
           <h2 className="font-display text-4xl">{t.empty.title}</h2>
           <p className="max-w-xs text-muted">{t.empty.body}</p>
           {origin && <InvitePanel url={inviteUrl} roomName={roomName} />}
+          <TryDemoLink />
         </section>
       ) : (
         <ChatTimeline items={view} clockOffset={room.clockOffset} announce={room.announce} onSpoil={room.spoil} />
       )}
+      </div>
+
+      <div className="contents lg:col-start-1 lg:row-span-2 lg:row-start-2 lg:flex lg:flex-col lg:justify-end lg:overflow-y-auto lg:border-r lg:border-line lg:pb-2">
 
       {!session.demo && !isTry && !replay && <FeedbackPrompt guestId={session.guestId} guestKey={session.key ?? ""} roomCode={session.code} />}
       {!soundOn && !muted && room.ready && (
@@ -493,7 +523,7 @@ function RoomView({
         />
       )}
       {showWavePill && (
-        <div className="mx-auto mb-1 flex max-w-xl items-center gap-1 px-3">
+        <div className="mx-auto mb-1 flex w-full max-w-xl items-center gap-1 px-3">
           <button
             onClick={() => (setWaveOpen(true), setWaveSeen(latestMoment.id))}
             className="pop-in min-w-0 flex-1 truncate rounded-full border border-accent/60 bg-accent/10 px-3 py-1.5 text-sm font-semibold text-accent"
@@ -506,9 +536,14 @@ function RoomView({
         </div>
       )}
       {suspense && !(replay && (!synced || room.paused)) && <HypeStrip pending={pending} clockOffset={room.clockOffset} />}
+      </div>
+
+      <div className="contents lg:col-start-2 lg:row-start-3 lg:block">
       <Composer disabled={!canChat} onSend={room.sendText} chips={QUICK_CHIPS[sport]}>
         <RoarButton disabled={!canChat} onStart={() => !soundOn && !muted && unlockSound()} onRoar={(i, d) => room.sendRoar(i, d).catch(() => undefined)} />
       </Composer>
+      </div>
+      </div>
 
       {/* Floodlight glow while the crowd roars. Decorative only. */}
       <div
@@ -519,7 +554,7 @@ function RoomView({
 
       <LagSheet
         open={lagOpen}
-        onClose={() => setLagOpen(false)}
+        onClose={() => (setLagOpen(false), setLagDone(true))}
         lagMs={room.lagMs}
         source={source}
         onChange={(ms, src) => {
@@ -607,6 +642,7 @@ function RoomView({
               if (v) unlockSound();
             }}
           />
+          <NexconnBadge className="mt-2 self-start" />
         </div>
       </Sheet>
 
@@ -618,6 +654,7 @@ function RoomView({
           code={session.code}
           items={view}
           lagMs={room.lagMs}
+          lags={boardEntries}
         />
       )}
 

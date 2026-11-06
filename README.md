@@ -26,6 +26,7 @@ Each person sets how far behind their feed is (pick TV / DTH / streaming / radio
 - **"What did I miss?"** An AI summary built only from messages already revealed on your screen.
 - **Big public stadiums.** Featured match rooms for up to 10,000 fans, split into North / South / East stands.
 - **Hindi UI.** A one-tap हिंदी / English switch.
+- **How it works page** (`/how-it-works`): the problem, the hold, a flow diagram and a Feature → Nexconn table. A "Built on Nexconn Chat SDK" badge links to it from the home page, the room menu and the demo end card.
 - **Safety and privacy.** Report, block, creator mute/remove, profanity filter, guest accounts with no email or phone, and a "Delete my data" button.
 
 ## Feature → how it uses Nexconn
@@ -85,7 +86,7 @@ npm run dev
 | `NEXCONN_APP_KEY`, `NEXCONN_APP_SECRET` | Nexconn Console → your app |
 | `NEXCONN_API_BASE`, `NEXCONN_API_BASE_BACKUP`, `NEXCONN_AREA` | Server API domains and SDK area for your data center |
 | `DATABASE_URL` | Neon pooled connection string |
-| `ADMIN_TOKEN` | Protects `/admin` (feature rooms, post anchors, create stadiums) |
+| `ADMIN_TOKEN` | Protects `/admin` (feature rooms, post anchors, create stadiums) and `GET /api/admin/export` (daily usage CSV) |
 | `AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`, `AI_FALLBACK_MODEL` | Optional. Any OpenAI-compatible provider for "What did I miss?" (or `GEMINI_API_KEY`) |
 | `NEXT_PUBLIC_FEATURE_*` | Set to `1` to turn on: `GHOST_CROWD`, `WAVE`, `AUTO_CALIBRATION`, `AI_CATCHUP`, `STADIUMS`, `HINDI`, `CALL_IT` |
 

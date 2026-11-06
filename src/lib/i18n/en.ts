@@ -24,6 +24,7 @@ export const en = {
     heroUnlocks: "unlocks in",
     privacy: "Privacy",
     stats: "Live stats",
+    how: "How it works",
   },
 
   profile: {
@@ -82,6 +83,7 @@ export const en = {
     body: "Share the link. Everyone sets their own feed delay, and nobody gets spoiled.",
     share: "Share",
     copy: "Copy link",
+    whatsapp: "WhatsApp",
     copied: "Copied!",
     qr: "Show QR",
     hideQr: "Hide QR",
@@ -112,8 +114,11 @@ export const en = {
     feedLabel: (s: number) => (s === 0 ? "Your screen · live" : `Your screen · ${s}s behind`),
     result: (r: number | "W") => (r === "W" ? "OUT!" : r === 6 ? "SIX!" : r === 4 ? "FOUR!" : r === 0 ? "Dot ball" : `${r} run`),
     start: "Start the over",
+    startNow: (s: number) => `Start now · ${s}`,
+    notYet: "Not yet",
     starting: "Starting…",
     coachPick: "Pick how you're watching (the ⏱ badge), then start the over.",
+    coachAuto: "Feed set. The final over starts in a moment, keep an eye on the chat.",
     coachFastest: "You're on the fastest feed, so nothing gets held back. Tap ⏱ and pick Streaming app to see SameBall work.",
     coachBehind: (lag: number, s: number) => `The over has started on the fastest feed. Your screen is ${lag}s behind: first ball in ${s}s.`,
     coachFuture: "🔒 These messages are from the future. Each one unlocks when that moment reaches your screen.",
@@ -206,6 +211,7 @@ export const en = {
     lock: "🔒 Lock picks",
     happened: (o: string) => `It was: ${o}`,
     itWas: (o: string) => `It was ${o}!`,
+    expand: "Show the result",
     won: (points: number) => `🎯 You called it! ${points} point${points === 1 ? "" : "s"}`,
     lost: "Not this time.",
     missed: "You didn't pick this one.",
@@ -299,6 +305,7 @@ export const en = {
     past: (s: number) => `🦕 ${s}s in the past`,
     behind: (s: number) => `+${s}s`,
     watching: (n: number) => `${n} watching now`,
+    demoFriends: (n: number) => `You + ${n} demo friends`,
   },
 
   roar: {
@@ -375,6 +382,67 @@ export const en = {
     nothing: "There's no SameBall data in this browser.",
   },
 
+  nexconn: {
+    badge: "Built on Nexconn Chat SDK",
+  },
+
+  how: {
+    title: "How SameBall works",
+    problemTitle: "The problem",
+    problemBody:
+      "The same match reaches people at different times. The ground is live, TV is a few seconds behind, DTH a bit more, and streaming apps often run 20 to 60+ seconds behind TV. In a normal group chat, the fastest friend's \"SIX!!\" spoils the moment for everyone else.",
+    holdTitle: "How SameBall holds messages",
+    steps: [
+      { t: "You pick how you're watching (TV, DTH, streaming, radio, at the venue) and fine-tune by the second." },
+      { t: "Every message carries the sender's delay. Nexconn delivers it to everyone instantly." },
+      { t: "Your phone works out which match moment the message is about: the time it was sent minus the sender's delay." },
+      { t: "It stays locked until that moment reaches your screen. You see who wrote, never what, until then." },
+    ],
+    formula: "unlocks at = sent time − sender's delay + your delay",
+    archTitle: "Architecture",
+    flow: [
+      { t: "📺 A friend on the TV feed sends \"SIX!!\"" },
+      { t: "⚡ Nexconn Chat delivers it at once (group and community channels)" },
+      { t: "📱 Your phone holds it in SameBall's timing engine" },
+      { t: "🔓 It unlocks when the six reaches your screen" },
+    ],
+    side: {
+      server: "SameBall server (Vercel): guest chat tokens, demo bots, moderation and live stats from Nexconn webhooks. It never relays chat.",
+      ai: "AI catch-up: only ever sees messages already unlocked on your screen.",
+    },
+    tableTitle: "Feature → Nexconn → why",
+    cols: { feature: "Feature", nexconn: "Nexconn capability", why: "Why" },
+    rows: [
+      { f: "Match rooms", n: "Group channels", w: "Membership, moderation and 180-day history for next-day replays." },
+      { f: "Big public stadiums", n: "Community channels + public sub-channels", w: "Up to 10,000 fans, split into stands." },
+      { f: "Guest sign-in", n: "Server API access tokens + SDK connect", w: "No email or phone: tap the link, pick a name." },
+      { f: "Spoiler-free chat", n: "Text messages with an extra field", w: "Each message carries the sender's delay, so every phone computes its own unlock time." },
+      { f: "Roars, Call it, Sync Check", n: "8 registered custom message types", w: "Structured, validated payloads that persist in history like chat." },
+      { f: "Late joiners and replays", n: "Message history query", w: "Old messages come back locked if their moment is still ahead of you." },
+      { f: "Demo friends and match markers", n: "Server API messages sent as bot users", w: "Judge Mode works alone, with no match on." },
+      { f: "Moderation", n: "Server API mute list and member removal", w: "Room creators can keep their room safe." },
+      { f: "Live stats", n: "Message webhooks", w: "Real messages are counted on our server, not trusted from the app." },
+    ],
+    source: "Source code on GitHub",
+  },
+
+  checklist: {
+    title: "Before the match",
+    mute: "Mute score-app and news alerts (they spoil too).",
+    feed: "Pick how you're watching.",
+    feedCta: "Pick feed",
+    invite: "Invite your squad.",
+    inviteCta: "Invite",
+    done: "Got it",
+  },
+
+  alone: {
+    title: "You're the only one here.",
+    body: "SameBall is best with your squad. Invite them, or see it work with two demo friends.",
+    invite: "Invite friends",
+    demo: "Try it with 2 demo friends",
+  },
+
   stats: {
     title: "Live stats",
     subtitle: "Real usage. Test and bot users are excluded.",
@@ -383,7 +451,14 @@ export const en = {
     messages: "Messages",
     spoilersBlocked: "Spoilers blocked",
     roars: "Roars",
-    spoilersHelp: "Messages that arrived locked and then revealed on schedule, not through spoil me.",
+    rooms2: "Rooms with 2+ fans",
+    parties: "Matches watched together",
+    since: "Live since",
+    help: {
+      spoilers: { term: "Spoilers blocked", body: "Messages in real rooms that arrived locked and then unlocked on schedule, not through spoil me. Demo rooms are left out." },
+      parties: { term: "Matches watched together", body: "A room on one day where at least 2 real people chatted." },
+      rooms2: { term: "Rooms with 2+ fans", body: "Rooms that at least 2 real people joined." },
+    },
     lagSpread: "Median lag spread per room",
     dau: "Daily active users, last 14 days (IST)",
     dauShort: "Active users",

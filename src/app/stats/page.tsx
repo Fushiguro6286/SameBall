@@ -1,70 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { sql } from "drizzle-orm";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { db } from "@/lib/db";
-import { t } from "@/lib/i18n";
+import { Tx } from "@/components/Lang";
+import { NexconnBadge } from "@/components/NexconnBadge";
+import { t, type TextKey } from "@/lib/i18n";
+import { getDays, getTotals, type Day } from "@/lib/stats";
 
 export const metadata: Metadata = { title: t.stats.title };
 
-interface Counts {
-  users: number;
-  rooms: number;
-  messages: number;
-  spoilers: number;
-  roars: number;
-  srv_rows: number;
-  srv_messages: number;
-  srv_roars: number;
-  lag_spread_ms: number | null;
-}
-interface Day {
-  day: string;
-  users: number;
-}
-
-// Real usage only: test and bot profiles are excluded everywhere.
-const REAL = sql`not coalesce(p.is_test, false) and not coalesce(p.is_bot, false)`;
-
-async function getStats(): Promise<{ c: Counts; days: Day[] }> {
-  const [counts, days] = await Promise.all([
-    db().execute(sql`
-      select
-        (select count(distinct user_id) from events where name = 'joined' and not is_test)::int as users,
-        (select count(*) from rooms r join profiles p on p.id = r.created_by where ${REAL} and r.kind = 'room')::int as rooms,
-        (select count(*) from events where name = 'message_sent' and not is_test)::int as messages,
-        (select count(*) from events where name = 'revealed_on_time' and not is_test)::int as spoilers,
-        (select count(*) from events where name = 'roar_sent' and not is_test)::int as roars,
-        (select count(*) from nc_messages m left join profiles p on p.id = m.user_id where ${REAL})::int as srv_rows,
-        (select count(*) from nc_messages m left join profiles p on p.id = m.user_id where ${REAL} and m.message_type = 'RC:TxtMsg')::int as srv_messages,
-        (select count(*) from nc_messages m left join profiles p on p.id = m.user_id where ${REAL} and m.message_type = 'SB:Roar')::int as srv_roars,
-        (
-          with latest as (
-            select distinct on (m.channel_id, m.user_id) m.channel_id, m.lag
-            from nc_messages m left join profiles p on p.id = m.user_id
-            where m.lag is not null and ${REAL}
-            order by m.channel_id, m.user_id, m.sent_at desc
-          ),
-          spreads as (select max(lag) - min(lag) as s from latest group by channel_id having count(*) >= 2)
-          select percentile_cont(0.5) within group (order by s) from spreads
-        )::float as lag_spread_ms
-    `),
-    // Daily active users (IST days): anyone with an in-app event or a server-seen message that day.
-    db().execute(sql`
-      with acts as (
-        select user_id, created_at as at from events where not is_test and user_id is not null and created_at > now() - interval '14 days'
-        union all
-        select m.user_id, m.sent_at from nc_messages m left join profiles p on p.id = m.user_id where ${REAL} and m.sent_at > now() - interval '14 days'
-      )
-      select to_char(d, 'YYYY-MM-DD') as day, count(distinct a.user_id)::int as users
-      from generate_series((now() at time zone 'Asia/Kolkata')::date - 13, (now() at time zone 'Asia/Kolkata')::date, interval '1 day') d
-      left join acts a on (a.at at time zone 'Asia/Kolkata')::date = d::date
-      group by d order by d
-    `),
-  ]);
-  return { c: counts.rows[0] as unknown as Counts, days: days.rows as unknown as Day[] };
-}
+/** The daily chart shows only once it has this many days with activity; before that the totals tell the story. */
+const CHART_MIN_DAYS = 3;
 
 export default function StatsPage() {
   return (
@@ -72,44 +18,69 @@ export default function StatsPage() {
       <Link href="/" className="text-sm text-muted">
         ← {t.appName}
       </Link>
-      <h1 className="mt-4 font-display text-5xl">{t.stats.title}</h1>
-      <p className="mt-2 text-muted">{t.stats.subtitle}</p>
+      <h1 className="mt-4 font-display text-5xl">
+        <Tx k="stats.title" />
+      </h1>
+      <p className="mt-2 text-muted">
+        <Tx k="stats.subtitle" />
+      </p>
       <Suspense fallback={<p className="mt-6 text-muted">…</p>}>
         <Tiles />
       </Suspense>
-      <p className="mt-4 text-xs text-muted">
-        {t.stats.spoilersBlocked}: {t.stats.spoilersHelp}
-      </p>
+      <dl className="mt-6 space-y-2 text-xs text-muted">
+        {(["spoilers", "parties", "rooms2"] as const).map((k) => (
+          <div key={k}>
+            <dt className="inline font-semibold text-foreground">
+              <Tx k={`stats.help.${k}.term`} />:
+            </dt>{" "}
+            <dd className="inline">
+              <Tx k={`stats.help.${k}.body`} />
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <NexconnBadge className="mt-8" />
     </main>
   );
 }
 
 async function Tiles() {
   await connection();
-  const s = await getStats().catch((e) => (console.error("stats failed", (e as Error).message), null));
+  const s = await Promise.all([getTotals(), getDays(14)]).catch((e) => (console.error("stats failed", (e as Error).message), null));
   if (!s) return <p className="mt-6">{t.errors.generic}</p>;
-  const { c, days } = s;
-  const server = c.srv_rows > 0; // webhook is on: Nexconn's own delivery is the primary source
-  const tiles: [string, string][] = [
-    [t.stats.users, fmt(c.users)],
-    [t.stats.rooms, fmt(c.rooms)],
-    [t.stats.messages, fmt(server ? c.srv_messages : c.messages)],
-    [t.stats.spoilersBlocked, fmt(c.spoilers)],
-    [t.stats.roars, fmt(server ? c.srv_roars : c.roars)],
-    [t.stats.lagSpread, c.lag_spread_ms === null ? "–" : `${Math.round(c.lag_spread_ms / 1000)}s`],
+  const [c, days] = s;
+  const tiles: [TextKey, string][] = [
+    ["stats.users", fmt(c.users)],
+    ["stats.rooms", fmt(c.rooms)],
+    ["stats.rooms2", fmt(c.rooms_2plus)],
+    ["stats.messages", fmt(c.messages)],
+    ["stats.spoilersBlocked", fmt(c.spoilers)],
+    ["stats.parties", fmt(c.watch_parties)],
+    ["stats.roars", fmt(c.roars)],
+    ["stats.lagSpread", c.lag_spread_ms === null ? "–" : `${Math.round(c.lag_spread_ms / 1000)}s`],
   ];
+  const activeDays = days.filter((d) => d.users > 0).length;
   return (
     <>
-      <dl className="mt-6 grid grid-cols-2 gap-3">
+      {c.since && (
+        <p className="mt-4 text-sm">
+          <Tx k="stats.since" /> {new Date(`${c.since}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+        </p>
+      )}
+      <dl className="mt-4 grid grid-cols-2 gap-3">
         {tiles.map(([label, value]) => (
           <div key={label} className="rounded-2xl border border-line bg-surface p-4">
-            <dt className="text-sm text-muted">{label}</dt>
+            <dt className="text-sm text-muted">
+              <Tx k={label} />
+            </dt>
             <dd className="font-display text-4xl text-accent">{value}</dd>
           </div>
         ))}
       </dl>
-      <p className="mt-2 text-xs text-muted">{server ? t.stats.sourceServer : t.stats.sourceClient}</p>
-      <DauChart days={days} />
+      <p className="mt-2 text-xs text-muted">
+        <Tx k={c.srv_rows > 0 ? "stats.sourceServer" : "stats.sourceClient"} />
+      </p>
+      {activeDays >= CHART_MIN_DAYS && <DauChart days={days} />}
     </>
   );
 }
@@ -123,7 +94,7 @@ function DauChart({ days }: { days: Day[] }) {
   return (
     <section aria-labelledby="dau" className="mt-8 rounded-2xl border border-line bg-surface p-4">
       <h2 id="dau" className="text-sm text-muted">
-        {t.stats.dau}
+        <Tx k="stats.dau" />
       </h2>
       <div aria-hidden className="mt-4 flex h-32 items-end gap-[2px] border-b border-line">
         {days.map((d) => (
@@ -140,12 +111,18 @@ function DauChart({ days }: { days: Day[] }) {
         <span>{days.at(-1) && label(days.at(-1)!.day)}</span>
       </div>
       <details className="mt-3 text-xs text-muted">
-        <summary className="cursor-pointer">{t.stats.table}</summary>
+        <summary className="cursor-pointer">
+          <Tx k="stats.table" />
+        </summary>
         <table className="mt-2 w-full text-left">
           <thead>
             <tr>
-              <th className="font-normal">{t.stats.day}</th>
-              <th className="font-normal">{t.stats.dauShort}</th>
+              <th className="font-normal">
+                <Tx k="stats.day" />
+              </th>
+              <th className="font-normal">
+                <Tx k="stats.dauShort" />
+              </th>
             </tr>
           </thead>
           <tbody>

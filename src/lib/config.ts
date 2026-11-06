@@ -57,3 +57,5 @@ export const FEATURES = {
   hindi: process.env.NEXT_PUBLIC_FEATURE_HINDI === "1",
   callIt: process.env.NEXT_PUBLIC_FEATURE_CALL_IT === "1",
 };
+
+export const GITHUB_URL = "https://github.com/Fushiguro6286/SameBall";

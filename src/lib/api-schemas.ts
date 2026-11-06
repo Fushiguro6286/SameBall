@@ -117,6 +117,14 @@ export const CatchupReq = z.object({
   code: roomCode,
   lag: z.number().min(0).max(MAX_LAG_MS),
   msgs: z
-    .array(z.object({ name: z.string().max(NAME_MAX), text: z.string().max(MESSAGE_MAX), matchTime: z.number().finite() }))
+    .array(
+      z.object({
+        name: z.string().max(NAME_MAX),
+        text: z.string().max(MESSAGE_MAX),
+        matchTime: z.number().finite(),
+        lagS: z.number().min(0).max(MAX_LAG_MS / 1000).optional(),
+        event: z.boolean().optional(),
+      }),
+    )
     .max(CATCHUP_MAX_MSGS),
 });
