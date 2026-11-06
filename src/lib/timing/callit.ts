@@ -40,6 +40,8 @@ export interface CallState {
 }
 export interface CallPoints extends Caller {
   points: number;
+  /** Longest run of correct calls in a row (a wrong pick ends it; skipping a call doesn't). */
+  best: number;
 }
 
 const who = (m: ChatMsg): Caller => ({ senderId: m.senderId, name: m.senderName, avatar: m.avatar });
@@ -58,6 +60,7 @@ function countedPicks(votes: ChatMsg[], deadline: number | null): Map<string, Ch
 export function callsOf(all: ChatMsg[], isRevealed: (id: string) => boolean, myId: string): { current: CallState | null; board: CallPoints[] } {
   const calls = all.filter((m) => m.kind === "call" && isRevealed(m.id)).sort((a, b) => a.sentTime - b.sentTime);
   const board = new Map<string, CallPoints>();
+  const run = new Map<string, number>();
   let current: CallState | null = null;
 
   for (const c of calls) {
@@ -76,10 +79,17 @@ export function callsOf(all: ChatMsg[], isRevealed: (id: string) => boolean, myI
     const answer = result && isRevealed(result.id) ? Number(result.payload?.answer) : null;
     const winners = answer === null ? [] : [...picks.values()].filter((v) => Number(v.payload?.pick) === answer).map(who);
     for (const w of winners) {
-      const p = board.get(w.senderId) ?? { ...w, points: 0 };
+      const p = board.get(w.senderId) ?? { ...w, points: 0, best: 0 };
       p.points += 1;
       board.set(w.senderId, p);
     }
+    if (answer !== null)
+      for (const v of picks.values()) {
+        const n = Number(v.payload?.pick) === answer ? (run.get(v.senderId) ?? 0) + 1 : 0;
+        run.set(v.senderId, n);
+        const p = board.get(v.senderId);
+        if (p) p.best = Math.max(p.best, n);
+      }
     const myPick = picks.get(myId);
     current = {
       callId,

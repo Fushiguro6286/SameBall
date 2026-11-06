@@ -63,6 +63,12 @@ export const METRIC_EVENTS = [
   "wave_shared",
   "catchup_used",
   "feedback",
+  "autosync_applied",
+  "survey",
+  "invite_opened",
+  "recap_opened",
+  "recap_shared",
+  "paused",
 ] as const;
 
 export const MetricsReq = z.object({
@@ -85,6 +91,8 @@ export const FeedbackReq = z.object({
   roomCode: roomCode.optional(),
   helpful: z.boolean(),
   comment: z.string().trim().max(500).optional(),
+  spoiled: z.boolean().optional(),
+  again: z.boolean().optional(),
 });
 
 export const ClientErrorReq = z.object({

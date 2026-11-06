@@ -10,12 +10,15 @@ export function LagSheet({
   lagMs,
   source,
   onChange,
+  onPause,
 }: {
   open: boolean;
   onClose: () => void;
   lagMs: number;
   source: string;
   onChange: (ms: number, source: string) => void;
+  /** "I paused my stream": the chat waits until I'm back. */
+  onPause?: () => void;
 }) {
   const t = useT();
   const secs = Math.round(lagMs / 1000);
@@ -80,6 +83,12 @@ export function LagSheet({
           {t.lag.late}
         </button>
       </div>
+
+      {onPause && (
+        <button onClick={onPause} className="mt-4 w-full rounded-full border border-line bg-surface-2 py-2.5 text-sm">
+          ⏸ {t.pause.button}
+        </button>
+      )}
 
       <button onClick={onClose} className="mt-5 w-full rounded-full bg-accent py-3 font-semibold text-accent-ink">
         {t.lag.done}

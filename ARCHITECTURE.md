@@ -95,10 +95,38 @@ Anything that changes on screen because of a message can leak it early. Decision
 | Link previews | Not generated. Links render as plain text, and only once revealed. |
 | Reactions / Hype Radar | Hype gets numbers only (heat, seconds until the next reveal), never content or which chip. |
 | Call it | The question, others' picks, the answer and points show only once revealed for me. |
-| The Wave, AI catch-up, calibration | Built only from messages already revealed for me; the catch-up server re-checks `matchTime + myLag <= now`. |
+| The Wave, AI catch-up, auto-sync | Built only from messages already revealed for me; the catch-up server re-checks `matchTime + myLag <= now`. An auto-sync suggestion can't appear before the reaction it's based on reached my screen. |
+| Lag Leaderboard / member list | Uses the delay stamp on any message, locked ones included. It shows a delay number only, never content, sender timing or which moment. |
+| "I paused" | While paused my delay grows second by second, so nothing unlocks; "I'm back" keeps the extra delay. |
+| Match over / recap | The end-of-match marker is an anchor: each viewer's recap offer appears only once the end reaches their screen. The recap page and images show counts and names only. |
+| Call it picker count | Counts only picks already revealed for me (plus mine). |
 | Screen readers | `aria-live` announces revealed messages only. |
 | OG / share images | Never include messages. |
 | Vibration | Hype vibration says "something is coming", same as the strip. |
+
+## Nexconn design decisions
+- **One `SameBall:Moment` custom type?** Not adopted. Every message already carries the same fields: text uses `RC:TxtMsg` with `extra = {sb, lag, n, a}`, and each structured kind has its own registered `SB:*` type with `lag`. Nexconn gives us `sentTime`, so `revealAt = sentTime − senderLag + readerLag` is computed exactly as the brief describes. Switching would orphan existing history (Ghost Crowd replays read it for 180 days) and gain nothing.
+- **Chatroom KV attributes:** not available, because rooms are group channels (180-day history, membership, moderation). Shared state that needs no history (presence) goes through `/api/presence`; shared match state (anchors, Call it, Sync Check) travels as custom messages, so it persists in history and replays.
+- **History on rejoin:** done since P1 (`createMessagesQuery`); anything still ahead of the reader comes back locked.
+- **Moderation:** creator mute (Server API mute list) and remove (leave) exist. The Web SDK also offers `deleteMessageForAll` (recall) and an `onMessageDeleted` handler; recall and mute-all are planned with creator rooms (Phase 3).
+
+## Analytics events
+Client events go to `POST /api/metrics`; every row is flagged `is_test` when the user is a test or bot profile (bots never send client events). Names used for the brief's list:
+
+| Brief | Event |
+|---|---|
+| room_created | `room_created` |
+| member_joined | `joined` |
+| message_sent | `message_sent` (plus Nexconn webhook rows in `nc_messages`) |
+| message_held | `message_locked` |
+| message_revealed | `revealed_on_time` (and `spoil_me` when revealed early by choice) |
+| poll_answered | `call_picked` (`call_started` for new polls) |
+| recap_shared | `recap_shared` (`via`: whatsapp / story / copy), `recap_opened` (`from`: room / link) |
+| invite_opened | `invite_opened` (joined through a `?ref=` invite link) |
+| autosync_applied | `autosync_applied` (`deltaS`, `drift`) |
+| — | `paused`, `lag_set`, `survey`, `feedback`, `wave_shared`, `catchup_used`, `replay_started`, `sync_check_done` |
+
+The end-of-match survey (spoiled? would use again? comment) is stored in `feedback` (`spoiled`, `again` columns, migration 0005) and exported with `GET /api/admin/export?type=survey`.
 
 ## Known blockers and limits (Nov 6)
 - **Nexconn dev app cap:** a development-mode app allows 100 registered users (error 2007). Every guest, bot and second window counts. Switch the app to production in the Console before real matches, or traction stops at 100.

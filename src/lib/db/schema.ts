@@ -67,6 +67,9 @@ export const feedback = pgTable("feedback", {
   roomCode: text("room_code"),
   helpful: boolean("helpful").notNull(),
   comment: text("comment"),
+  // End-of-match survey (null for the 20-minute prompt): did anything get spoiled, would you use it again.
+  spoiled: boolean("spoiled"),
+  again: boolean("again"),
   createdAt: ts("created_at"),
 });
 

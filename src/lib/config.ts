@@ -58,4 +58,13 @@ export const FEATURES = {
   callIt: process.env.NEXT_PUBLIC_FEATURE_CALL_IT === "1",
 };
 
+/** Anchor the room creator posts to end the match (each viewer's recap opens when it reaches their screen). */
+export const END_LABELS: Record<Sport, string> = {
+  cricket: "Match over",
+  football: "Full time",
+  f1: "Chequered flag",
+  esports: "GG · Match over",
+  other: "Match over",
+};
+
 export const GITHUB_URL = "https://github.com/Fushiguro6286/SameBall";

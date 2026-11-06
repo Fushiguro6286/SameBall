@@ -17,6 +17,8 @@ import { RoarButton } from "@/components/RoarButton";
 import { StartBanner } from "@/components/StartBanner";
 import { CallCard, CallStartSheet } from "@/components/CallIt";
 import { NexconnBadge } from "@/components/NexconnBadge";
+import { PauseBar } from "@/components/PauseBar";
+import { RecapSheet } from "@/components/Recap";
 import { AloneCard, PrematchChecklist, TryDemoLink } from "@/components/RoomCards";
 import { SyncCheckCard, SyncStartSheet } from "@/components/SyncCheck";
 import { Toggle } from "@/components/Toggle";
@@ -30,11 +32,11 @@ import { Sheet } from "@/components/Sheet";
 import { errorText, startSession } from "@/lib/client/api";
 import { setMetricsUser, track } from "@/lib/client/metrics";
 import { loadBlocked, loadProfile, loadRoomPrefs, loadSetting, loadStand, rememberRoom, saveBlocked, saveProfile, saveSetting, saveStand } from "@/lib/client/storage";
-import { AVATARS, FEATURES, LAG_SOURCES, QUICK_CHIPS, asSport, type Sport, STADIUM_STANDS, type StandId } from "@/lib/config";
+import { AVATARS, END_LABELS, FEATURES, LAG_SOURCES, QUICK_CHIPS, asSport, type Sport, STADIUM_STANDS, type StandId } from "@/lib/config";
 import { useNow } from "@/lib/client/useNow";
 import { useT } from "@/lib/i18n/client";
 import { useRoom, type RoomSession } from "@/lib/room/useRoom";
-import { suggestLag } from "@/lib/timing/calibration";
+import { suggestSync } from "@/lib/timing/autosync";
 import { TRY_BOTS } from "@/lib/try-script";
 
 const DEFAULT_SOURCE = LAG_SOURCES.find((s) => s.id === "streaming")!;
@@ -132,6 +134,7 @@ export function RoomClient({
       if (!second) rememberRoom({ code: room.code, name: room.name });
       setCurrentName(room.name);
       track("joined", room.code);
+      if (ref && !second) track("invite_opened", room.code);
       if (room.redirectedFrom) {
         setNotice(t.join.redirected(room.name));
         router.replace(`/r/${room.code}`);
@@ -313,6 +316,11 @@ function RoomView({
   const [lagDone, setLagDone] = useState(!(prefs.first && !replay));
   const [checklist, setChecklist] = useState(() => !isTry && !replay && !second && !loadSetting("prematchDone", false));
   const [aloneHidden, setAloneHidden] = useState(false);
+  /** "I paused my stream": when, and the delay/feed to return to with "Back to live". */
+  const [recapOpen, setRecapOpen] = useState(false);
+  const [recapSeen, setRecapSeen] = useState(false);
+  const [confirmEnd, setConfirmEnd] = useState(false);
+  const [pausedFrom, setPausedFrom] = useState<{ at: number; lag: number; source: string } | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [syncOpen, setSyncOpen] = useState(false);
@@ -321,7 +329,7 @@ function RoomView({
   const [waveOpen, setWaveOpen] = useState(false);
   const [catchupOpen, setCatchupOpen] = useState(false);
   const [waveSeen, setWaveSeen] = useState<string | null>(null);
-  /** Shared-moment count when the calibration hint was dismissed; it returns only after new evidence. */
+  /** Observation count when the auto-sync hint was dismissed; it returns only after new evidence. */
   const [calDismissedAt, setCalDismissedAt] = useState(0);
   const [origin, setOrigin] = useState("");
 
@@ -354,11 +362,17 @@ function RoomView({
   const waveMembers = replay ? room.lags : boardEntries;
   const latestMoment = FEATURES.wave ? room.moments.at(-1) : undefined;
   const waveNow = useNow(!!latestMoment, 15_000, room.clockOffset);
-  const lagHint = FEATURES.autoCalibration && !replay ? suggestLag(room.moments, session.guestId, room.lagMs) : null;
+  // Once I've applied a suggestion (source "crowd"), only real drift brings it back.
+  const lagHint = FEATURES.autoCalibration && !replay && !room.paused ? suggestSync(room.syncObs, room.lagMs, source === "crowd") : null;
   const showWavePill = !!latestMoment && latestMoment.id !== waveSeen && waveNow - (latestMoment.matchTime + room.lagMs) < WAVE_FRESH_MS;
   const canChat = room.ready && (!replay || synced);
   const others = boardEntries.filter((e) => e.senderId !== session.guestId && !e.senderId.startsWith("bot_")).length;
   const alone = !isTry && !replay && room.ready && others === 0 && (watching ?? 1) <= 1;
+  const isOwner = !!ownerId && ownerId === session.guestId;
+  const endLabel = END_LABELS[sport];
+  const canRecap = !isTry && !replay && !session.demo;
+  // The end-of-match anchor opens the recap offer only once it has reached *my* screen.
+  const matchOver = canRecap && view.some((v) => v.kind === "anchor" && !v.locked && v.text === endLabel && (v.senderId === ownerId || v.senderId.startsWith("bot_")));
 
   return (
     <div className="flex h-dvh flex-col">
@@ -461,6 +475,19 @@ function RoomView({
 
       {!replay && startsAt && origin && <StartBanner startsAt={startsAt} roomName={roomName} code={session.code} url={`${origin}/r/${session.code}`} />}
 
+      {pausedFrom && !replay && (
+        <PauseBar
+          since={pausedFrom.at}
+          onBack={() => (room.resumeAt(null, "custom"), setSource("custom"), setPausedFrom(null))}
+          onLive={() => {
+            const preset = LAG_SOURCES.find((s) => s.id === pausedFrom.source);
+            room.resumeAt(preset ? preset.seconds * 1000 : pausedFrom.lag, pausedFrom.source);
+            setSource(pausedFrom.source);
+            setPausedFrom(null);
+          }}
+        />
+      )}
+
       {checklist && (
         <PrematchChecklist
           onFeed={() => setLagOpen(true)}
@@ -512,15 +539,24 @@ function RoomView({
           {t.roar.soundOn}
         </button>
       )}
-      {lagHint && lagHint.moments > calDismissedAt && (
+      {lagHint && lagHint.observations > calDismissedAt && (
         <CalibrationCard
           s={lagHint}
           onApply={() => {
             setSource("crowd");
             room.setLag(lagHint.lag, "crowd");
+            track("autosync_applied", session.code, { deltaS: Math.round(lagHint.delta / 1000), drift: lagHint.drift });
           }}
-          onDismiss={() => setCalDismissedAt(lagHint.moments)}
+          onDismiss={() => setCalDismissedAt(lagHint.observations)}
         />
+      )}
+      {matchOver && !recapSeen && (
+        <button
+          onClick={() => (setRecapOpen(true), setRecapSeen(true))}
+          className="pop-in mx-auto mb-1 w-[calc(100%-1.5rem)] max-w-xl truncate rounded-full border border-accent/60 bg-accent/10 px-3 py-1.5 text-sm font-semibold text-accent"
+        >
+          {t.recap.over}
+        </button>
       )}
       {showWavePill && (
         <div className="mx-auto mb-1 flex w-full max-w-xl items-center gap-1 px-3">
@@ -557,13 +593,23 @@ function RoomView({
         onClose={() => (setLagOpen(false), setLagDone(true))}
         lagMs={room.lagMs}
         source={source}
+        onPause={
+          replay || isTry || pausedFrom
+            ? undefined
+            : () => {
+                setPausedFrom({ at: Date.now(), lag: room.lagMs, source });
+                room.pause();
+                track("paused", session.code);
+                setLagOpen(false);
+              }
+        }
         onChange={(ms, src) => {
           setSource(src);
           room.setLag(ms, src);
         }}
       />
 
-      <Sheet open={menuOpen} onClose={() => (setMenuOpen(false), setConfirmAll(false))} title={t.room.menu}>
+      <Sheet open={menuOpen} onClose={() => (setMenuOpen(false), setConfirmAll(false), setConfirmEnd(false))} title={t.room.menu}>
         <div className="mt-4 flex flex-col gap-2">
           <LangToggle className="self-start" />
           <button
@@ -582,6 +628,32 @@ function RoomView({
               {t.catchup.menu}
             </button>
           )}
+          {canRecap && (
+            <button onClick={() => (setMenuOpen(false), setRecapOpen(true), setRecapSeen(true))} className="rounded-2xl border border-line bg-surface-2 px-4 py-3 text-left">
+              {t.recap.menu}
+            </button>
+          )}
+          {canRecap && isOwner && !matchOver &&
+            (confirmEnd ? (
+              <div className="rounded-2xl border border-accent/60 bg-accent/10 p-3 text-sm">
+                <p>{t.recap.endConfirm}</p>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    onClick={() => (room.endMatch(endLabel).catch(() => undefined), setConfirmEnd(false), setMenuOpen(false))}
+                    className="rounded-full bg-accent px-4 py-2 font-semibold text-accent-ink"
+                  >
+                    {t.recap.endYes}
+                  </button>
+                  <button onClick={() => setConfirmEnd(false)} className="rounded-full border border-line px-4 py-2">
+                    {t.room.spoilCancel}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setConfirmEnd(true)} disabled={!room.ready} className="rounded-2xl border border-line bg-surface-2 px-4 py-3 text-left disabled:opacity-50">
+                {t.recap.end}
+              </button>
+            ))}
           {FEATURES.wave && room.moments.length > 0 && (
             <button onClick={() => (setMenuOpen(false), setWaveOpen(true))} className="rounded-2xl border border-line bg-surface-2 px-4 py-3 text-left">
               {t.wave.menu} ({room.moments.length})
@@ -660,6 +732,19 @@ function RoomView({
 
       {FEATURES.wave && (
         <WaveSheet open={waveOpen} onClose={() => setWaveOpen(false)} moments={room.moments} members={waveMembers} roomName={roomName} code={session.code} />
+      )}
+
+      {canRecap && (
+        <RecapSheet
+          open={recapOpen}
+          onClose={() => setRecapOpen(false)}
+          code={session.code}
+          auth={session.key ? { guestId: session.guestId, key: session.key } : null}
+          origin={origin}
+          board={room.callBoard}
+          moments={FEATURES.wave ? room.moments : []}
+          onWave={FEATURES.wave ? () => (setRecapOpen(false), setWaveOpen(true)) : undefined}
+        />
       )}
 
       <SyncStartSheet open={syncOpen} onClose={() => setSyncOpen(false)} onStart={room.startSyncCheck} />

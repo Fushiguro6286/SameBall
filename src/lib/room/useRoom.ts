@@ -5,6 +5,7 @@ import { HISTORY_PAGES, HISTORY_PAGES_REPLAY } from "../config";
 import { fetchServerTime } from "../client/api";
 import { track } from "../client/metrics";
 import { saveRoomPrefs } from "../client/storage";
+import { observe, type Observation } from "../timing/autosync";
 import { measureOffset } from "../timing/clock";
 import { LIVE_MAX_LAG_MS, MAX_LAG_MS, matchTime, revealAt, type ChatMsg } from "../timing/engine";
 import type { Pending } from "../timing/hype";
@@ -52,6 +53,8 @@ interface Snapshot {
   firstAt: number | null;
   /** Big moments, from reactions already revealed for me (so never ahead of my screen). */
   moments: Moment[];
+  /** Auto-sync: my reactions vs the fastest friend's, from revealed messages only. */
+  syncObs: Observation[];
   /** Call it: the latest prediction and the room's points (both only from what's revealed for me). */
   call: CallState | null;
   callBoard: CallPoints[];
@@ -114,7 +117,7 @@ const snapshot = (st: RoomStore, myId: string): Snapshot => ({
   sync: syncOf(st),
   paused: st.paused,
   firstAt: ((m) => (m ? matchTime(m) : null))(st.all().find((m) => m.kind === "text")),
-  moments: findMoments(st.all().filter((m) => st.isRevealed(m.id))),
+  ...((revealed) => ({ moments: findMoments(revealed), syncObs: observe(revealed, myId) }))(st.all().filter((m) => st.isRevealed(m.id))),
 });
 
 /** A roar that just reached my screen. */
@@ -151,6 +154,7 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     paused: false,
     firstAt: null,
     moments: [],
+    syncObs: [],
     call: null,
     callBoard: [],
   });
@@ -352,7 +356,7 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
 
   /** Sends an SB:* message stamped with my lag and adds it to my store. */
   const sendSb = useCallback(
-    async <K extends "call" | "callvote" | "callresult">(kind: K, p: Omit<SbPayload<K>, "v" | "lag" | "n" | "a">) => {
+    async <K extends "call" | "callvote" | "callresult" | "anchor">(kind: K, p: Omit<SbPayload<K>, "v" | "lag" | "n" | "a">) => {
       const store = storeRef.current;
       const tr = transportRef.current;
       if (!store || !tr) throw new Error("not connected");
@@ -369,6 +373,8 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     },
     [sendSb, s.code],
   );
+  /** Room creator: mark the match as over. It's an anchor, so each viewer's recap opens when the end reaches their screen. */
+  const endMatch = useCallback((label: string) => sendSb("anchor", { label: label.slice(0, 40) }), [sendSb]);
   const pickCall = useCallback(
     async (callId: string, pick: number) => {
       await sendSb("callvote", { callId, pick });
@@ -433,6 +439,7 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     startSyncCheck,
     syncTap,
     startCall,
+    endMatch,
     pickCall,
     answerCall,
     setLag,
@@ -440,6 +447,13 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     spoilAll: () => storeRef.current?.spoilAll(),
     pause: () => storeRef.current?.pause(),
     resume: () => storeRef.current?.resume(),
+    /** Live rooms, after "I paused": resume, then save and announce the new delay (`ms` null = keep the pause added). */
+    resumeAt: (ms: number | null, source: string) => {
+      const st = storeRef.current;
+      if (!st) return;
+      st.resume();
+      setLag(ms ?? st.effectiveLag(), source);
+    },
     /** Replay only: move my lag by `ms` (positive = the chat goes back in the match). */
     nudge: (ms: number) => {
       const st = storeRef.current;

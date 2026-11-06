@@ -70,3 +70,22 @@ describe("Call it", () => {
     expect(callsOf(msgs, () => false, "me").current).toBeNull();
   });
 });
+
+describe("Call it streaks", () => {
+  const round = (id: string, t: number, picks: [string, number][], answer: number) => [
+    msg("call", "host", t, 0, { callId: id, q: "Next ball?", opts: ["Dot", "4", "6", "OUT"] }),
+    ...picks.map(([who, pick], i) => msg("callvote", who, t + 1000 + i, 0, { callId: id, pick })),
+    msg("callresult", "host", t + 20_000, 0, { callId: id, answer }),
+  ];
+  it("counts the longest run of correct calls; a wrong pick ends it, skipping doesn't", () => {
+    const msgs = [
+      ...round("a", 0, [["asha", 1], ["ravi", 1]], 1),
+      ...round("b", 60_000, [["asha", 2], ["ravi", 0]], 2),
+      ...round("c", 120_000, [["ravi", 3]], 3), // asha skips: her run continues
+      ...round("d", 180_000, [["asha", 0], ["ravi", 0]], 0),
+    ];
+    const { board } = callsOf(msgs, () => true, "asha");
+    expect(board.find((b) => b.senderId === "asha")).toMatchObject({ points: 3, best: 3 });
+    expect(board.find((b) => b.senderId === "ravi")).toMatchObject({ points: 3, best: 2 });
+  });
+});

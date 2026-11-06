@@ -44,7 +44,9 @@ On top of that core:
 - **Stadium Roar:** hold 📣 to roar; every phone plays the crowd at its own moment.
 - **Call it:** a fair-play prediction game. Someone asks "Next ball?", everyone picks, and each person's picks close when the ball reaches *their own* screen. A friend on a fast feed can't cheat, a friend on a slow feed can't be spoiled, and the points leaderboard keeps the room playing all match. Only SameBall's per-screen timing makes this fair.
 - **Lag Leaderboard** and **Sync Check:** see everyone's delay; calibrate the whole room from one shared moment.
-- **Crowd auto-calibration:** SameBall notices when your reactions line up better with a different delay and offers to fix it.
+- **Auto-sync from reactions:** when you react "SIX!" seconds after the fastest friend, again and again, SameBall works out how far behind your screen really is ("you're 31s behind the fastest screen, apply?") and nudges again if your stream drifts.
+- **I paused / I'm back:** pausing your stream or sitting through an ad pauses the chat with you.
+- **Squad recap:** when the match ends, each friend's recap opens as the end reaches their screen, with a story image and a "join this squad for the next match" link that brings new fans in.
 - **The Wave:** after a big moment, watch it ripple across your squad's screens and share it as a story image.
 - **Ghost Crowd replay:** watching the recording tomorrow? Sync to a moment and the room's chat and roars replay with your video.
 - **"What did I miss?":** an AI summary of what your friends said, built only from messages already revealed on your screen.

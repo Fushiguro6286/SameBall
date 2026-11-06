@@ -22,7 +22,9 @@ Each person sets how far behind their feed is (pick TV / DTH / streaming / radio
 - **Judge Mode (`/try`). A private room with two bot friends and a scripted final over, so you can see the magic alone, on one device, with no match on.
 - **Ghost Crowd replay.** Watching a recording the next day? Sync to a moment, and the room's chat and roars replay alongside your video.
 - **The Wave.** After a big moment, see it ripple across your squad's screens, then share it as a story image.
-- **Crowd auto-calibration.** From when your friends reacted, SameBall suggests a better lag setting. It never changes your setting without asking.
+- **Auto-sync from reactions.** When you react "SIX!" 31 s after the fastest friend did, three times running, SameBall suggests "you're 31s behind the fastest screen" and nudges again if you drift. It never changes your setting without asking.
+- **I paused / I'm back.** Pause your stream or sit through an ad: the chat waits with you, and your delay grows by the pause.
+- **Squad recap.** When the room creator ends the match, each friend's recap opens as the end reaches their screen: spoilers held, loudest roar, best Call it streak, biggest gap, a story image and a "join this squad" link.
 - **"What did I miss?"** An AI summary built only from messages already revealed on your screen.
 - **Big public stadiums.** Featured match rooms for up to 10,000 fans, split into North / South / East stands.
 - **Hindi UI.** A one-tap हिंदी / English switch.

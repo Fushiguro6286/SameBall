@@ -219,9 +219,10 @@ export const en = {
   },
 
   calibrate: {
-    later: (s: number, n: number) => `🎯 From your squad's reactions at ${n} moments, your screen looks about ${s}s further behind than your setting.`,
-    earlier: (s: number, n: number) => `🎯 From your squad's reactions at ${n} moments, your screen looks about ${s}s closer to live than your setting.`,
-    apply: (s: number) => `Set my lag to ${s}s`,
+    behind: (s: number, n: number) => `🎯 From your reactions at ${n} moments, we think you're ${s}s behind the fastest screen. Apply?`,
+    slipped: (s: number) => `🎯 You've slipped ${s}s further behind. Adjust?`,
+    caughtUp: (s: number) => `🎯 Your screen looks ${s}s closer to live now. Adjust?`,
+    apply: (s: number) => `Apply · ${s}s`,
     dismiss: "Not now",
   },
 
@@ -342,6 +343,46 @@ export const en = {
     late: "Chat feels late (−3s)",
     done: "Done",
     close: "Close",
+  },
+
+  recap: {
+    title: "Squad recap",
+    menu: "📊 Squad recap",
+    end: "🏁 End the match",
+    endConfirm: "End the match for everyone? Each friend's recap opens when the end reaches their own screen.",
+    endYes: "End match",
+    over: "🏁 Match over · See your squad recap",
+    loading: "Loading…",
+    fans: "Fans",
+    spoilers: "Spoilers held",
+    messages: "Messages",
+    roars: "Roars",
+    loudest: (who: string, n: number) => `📣 Loudest roar: ${who} (${n} roars)`,
+    slowest: (who: string, s: number) => `🦕 Biggest gap: ${s}s. ${who} had the slowest screen.`,
+    streak: (who: string, n: number) => `🎯 Best Call it streak: ${who}, ${n} in a row`,
+    wave: (n: number) => `🌊 The biggest moment rippled through ${n} screens.`,
+    seeWave: "See the Wave",
+    story: "Share story image",
+    shareText: (name: string) => `Our SameBall squad recap: ${name}. Zero spoilers. Join us for the next match!`,
+    join: "Join this squad for the next match",
+    joinBody: "Same room, same squad. Everyone sees each moment when it reaches their own screen.",
+    joinCta: "Join the squad",
+    survey: {
+      title: "Quick one: 2 taps",
+      spoiled: "Did anything get spoiled for you?",
+      again: "Would you use SameBall for the next match?",
+      comment: "Anything else? (optional)",
+      send: "Send",
+      thanks: "Thanks! That really helps.",
+    },
+  },
+
+  pause: {
+    button: "I paused my stream (or an ad break)",
+    paused: (clock: string) => `Paused · ${clock}.`,
+    waits: "The chat waits with you: nothing unlocks until you're back.",
+    back: "I'm back",
+    live: "I'm back to live",
   },
 
   feedback: {
