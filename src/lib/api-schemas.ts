@@ -46,6 +46,8 @@ export const CreateRoomReq = z.object({
 export const AdminReq = z.discriminatedUnion("action", [
   z.object({ action: z.literal("feature"), code: roomCode, featured: z.boolean() }),
   z.object({ action: z.literal("anchor"), code: roomCode, label: z.string().trim().min(1).max(40), lagS: z.number().min(0).max(21_600) }),
+  // text empty = ask the score provider (mock) for the current line.
+  z.object({ action: z.literal("score"), code: roomCode, text: z.string().trim().max(40), lagS: z.number().min(0).max(21_600) }),
   z.object({ action: z.literal("stadium"), name: z.string().trim().min(1).max(ROOM_NAME_MAX), sport: z.enum(SPORTS), startsAt: z.iso.datetime().optional() }),
 ]);
 

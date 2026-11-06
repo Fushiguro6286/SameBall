@@ -459,6 +459,14 @@ function RoomView({
           {!!host?.slowS && <span className="shrink-0 text-muted">🐢 {t.creator.slowOn(host.slowS)}</span>}
         </div>
       )}
+      {FEATURES.scoreStrip && room.score && (
+        <div className="flex items-center gap-2 border-b border-line bg-surface px-3 py-1.5 text-sm" title={t.score.help}>
+          <span className="shrink-0 text-xs text-muted">📺 {t.score.label}</span>
+          <p aria-live="polite" className="min-w-0 flex-1 truncate text-right font-semibold tabular-nums">
+            {room.score}
+          </p>
+        </div>
+      )}
       {pinned && (
         <div className="flex items-center gap-2 border-b border-line bg-surface-2 px-3 py-2 text-sm">
           <span aria-hidden>📌</span>

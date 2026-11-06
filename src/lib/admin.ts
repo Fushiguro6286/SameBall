@@ -32,6 +32,18 @@ export async function postAnchor(room: Room, label: string, lagMs: number) {
   await sendGroupMessage(HOST_BOT.id, room.channelId, SB_TYPES.anchor, content);
 }
 
+/** Live score line from the host bot. lag = the admin's feed delay (0 for a provider), so each screen shows it on time. */
+export async function postScore(room: Room, s: string, lagMs: number) {
+  await ensureBotUsers([HOST_BOT]);
+  const content = sbContent("score", { lag: lagMs, s, n: HOST_BOT.name, a: HOST_BOT.avatar });
+  if (room.kind === "stadium") {
+    for (const stand of STADIUM_STANDS) await sendCommunityMessage(HOST_BOT.id, room.channelId, stand, SB_TYPES.score, content);
+    return;
+  }
+  await joinGroup(room.channelId, HOST_BOT.id);
+  await sendGroupMessage(HOST_BOT.id, room.channelId, SB_TYPES.score, content);
+}
+
 /** A featured public match room on a community channel, owned by the host bot. */
 export async function createStadium(name: string, sport: Sport, startsAt?: Date) {
   await ensureBotUsers([HOST_BOT]);

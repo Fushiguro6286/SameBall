@@ -181,6 +181,10 @@ export const en = {
     dismiss: "Dismiss",
   },
 
+  score: {
+    label: "Score on your screen",
+    help: "Held back by your delay, so it never runs ahead of your TV.",
+  },
   league: {
     menu: "🏆 Series league",
     title: "Series league",
@@ -321,6 +325,9 @@ export const en = {
     stadiumName: "Stadium name (e.g. IND vs AUS Final)",
     createStadium: "Create stadium",
     stadiumCreated: (code: string) => `Stadium created: ${code}`,
+    scoreLabel: "Score line (e.g. IND 158/6 (19.2))",
+    scorePost: "Post score",
+    scoreAuto: "Auto score (demo)",
   },
 
   sync: {

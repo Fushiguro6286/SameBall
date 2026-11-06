@@ -62,6 +62,8 @@ interface Snapshot {
   callBoard: CallPoints[];
   /** Creator rooms: the host's controls (null elsewhere). */
   host: HostState | null;
+  /** Live score line: the latest one from the host bot that has reached my screen. */
+  score: string | null;
 }
 /** Creator-room controls, from the host's SB:Host messages (control messages, readable even while locked). */
 export interface HostState {
@@ -134,6 +136,9 @@ const snapshot = (st: RoomStore, myId: string, hostId?: string): Snapshot => {
   return {
   ...((c) => ({ call: c.current, callBoard: c.board }))(callsOf(msgs, (id) => st.isRevealed(id), myId)),
   host,
+  score: ((m) => (m ? String(m.payload?.s ?? "") : null))(
+    st.all().filter((m) => m.kind === "score" && m.senderId.startsWith("bot_") && st.isRevealed(m.id)).sort((a, b) => matchTime(a) - matchTime(b)).at(-1),
+  ),
   view: host?.hidden.size ? st.view().filter((v) => !host.hidden.has(v.id)) : st.view(),
   lockedCount: st.lockedCount(),
   lagMs: st.effectiveLag(),
@@ -185,6 +190,7 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     call: null,
     callBoard: [],
     host: null,
+    score: null,
   });
   const [heldBack, setHeldBack] = useState(0);
   const [status, setStatus] = useState<RoomStatus>("connecting");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FEATURES, SPORTS } from "@/lib/config";
 import { useT } from "@/lib/i18n/client";
 
@@ -23,6 +23,8 @@ export function AdminPanel() {
   const [anchor, setAnchor] = useState({ label: "Kick-off", lagS: 0 });
   const [done, setDone] = useState<string | null>(null);
   const [stadium, setStadium] = useState({ name: "", sport: "cricket" });
+  const [score, setScore] = useState("");
+  const [autoScore, setAutoScore] = useState<string | null>(null);
 
   const call = async (method: "GET" | "POST", payload?: unknown) => {
     setError(null);
@@ -43,6 +45,17 @@ export function AdminPanel() {
     call("POST", payload)
       .then(() => (setDone(note), load()))
       .catch((e: Error) => setError(e.message));
+
+  // Polls the score provider while this tab is open and posts each new line to the chosen room.
+  // shortcut: driven by the admin tab, not a server scheduler; move to a cron/queue if this goes beyond demos.
+  useEffect(() => {
+    if (!autoScore) return;
+    const tick = () => act({ action: "score", code: autoScore, text: "", lagS: 0 }, `${autoScore}: ${t.admin.scoreAuto}`);
+    tick();
+    const id = setInterval(tick, 30_000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- restart only when the room changes
+  }, [autoScore]);
 
   return (
     <div className="mt-6 space-y-4">
@@ -131,6 +144,18 @@ export function AdminPanel() {
                 className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2"
               />
             </label>
+            {FEATURES.scoreStrip && (
+              <label className="w-full">
+                <span className="block text-muted">{t.admin.scoreLabel}</span>
+                <input
+                  value={score}
+                  maxLength={40}
+                  onChange={(e) => setScore(e.target.value)}
+                  placeholder="IND 158/6 (19.2)"
+                  className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2"
+                />
+              </label>
+            )}
           </div>
           <ul className="space-y-2">
             {rooms.map((r) => (
@@ -156,6 +181,24 @@ export function AdminPanel() {
                 >
                   {t.admin.anchor}
                 </button>
+                {FEATURES.scoreStrip && (
+                  <>
+                    <button
+                      disabled={!score.trim()}
+                      onClick={() => act({ action: "score", code: r.code, text: score.trim(), lagS: anchor.lagS }, `${r.code}: ${score}`)}
+                      className="rounded-full border border-line px-3 py-1.5 disabled:opacity-40"
+                    >
+                      {t.admin.scorePost}
+                    </button>
+                    <button
+                      aria-pressed={autoScore === r.code}
+                      onClick={() => setAutoScore(autoScore === r.code ? null : r.code)}
+                      className={`rounded-full px-3 py-1.5 ${autoScore === r.code ? "bg-accent text-accent-ink" : "border border-line"}`}
+                    >
+                      {t.admin.scoreAuto}
+                    </button>
+                  </>
+                )}
               </li>
             ))}
           </ul>

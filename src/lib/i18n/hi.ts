@@ -184,6 +184,10 @@ export const hi: Dict = {
     dismiss: "हटाएँ",
   },
 
+  score: {
+    label: "आपकी स्क्रीन का स्कोर",
+    help: "आपकी देरी जितना रुककर आता है, ताकि आपके TV से आगे न भागे।",
+  },
   league: {
     menu: "🏆 सीरीज़ लीग",
     title: "सीरीज़ लीग",
@@ -324,6 +328,9 @@ export const hi: Dict = {
     stadiumName: "स्टेडियम का नाम (जैसे IND बनाम AUS फ़ाइनल)",
     createStadium: "स्टेडियम बनाएँ",
     stadiumCreated: (code: string) => `स्टेडियम बन गया: ${code}`,
+    scoreLabel: "स्कोर लाइन (जैसे IND 158/6 (19.2))",
+    scorePost: "स्कोर भेजें",
+    scoreAuto: "ऑटो स्कोर (डेमो)",
   },
 
   sync: {

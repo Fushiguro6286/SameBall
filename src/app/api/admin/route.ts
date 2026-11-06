@@ -1,5 +1,6 @@
 import { desc, eq, inArray } from "drizzle-orm";
-import { createStadium, postAnchor, isAdmin } from "@/lib/admin";
+import { createStadium, postAnchor, postScore, isAdmin } from "@/lib/admin";
+import { mockProvider } from "@/lib/score";
 import { FEATURES } from "@/lib/config";
 import { AdminReq } from "@/lib/api-schemas";
 import { db, rooms } from "@/lib/db";
@@ -16,7 +17,7 @@ export async function GET(req: Request) {
   const list = await db()
     .select({ code: rooms.code, name: rooms.name, sport: rooms.sport, kind: rooms.kind, members: rooms.memberCount, featured: rooms.featured, startsAt: rooms.startsAt, createdAt: rooms.createdAt })
     .from(rooms)
-    .where(inArray(rooms.kind, ["room", "stadium"]))
+    .where(inArray(rooms.kind, ["room", "stadium", "creator"]))
     .orderBy(desc(rooms.createdAt))
     .limit(100);
   return json({ rooms: list });
@@ -40,6 +41,13 @@ export async function POST(req: Request) {
   const room = await getRoom(b.code);
   if (!room || room.kind === "try") return fail(404, "room_not_found");
   try {
+    if (b.action === "score") {
+      if (!FEATURES.scoreStrip) return fail(404, "not_enabled");
+      const s = b.text || (await mockProvider.current({ name: room.name, startedAt: (room.startsAt ?? room.createdAt).getTime() }, Date.now()));
+      if (!s) return json({ ok: true, posted: null });
+      await postScore(room, s, b.text ? Math.round(b.lagS * 1000) : 0);
+      return json({ ok: true, posted: s });
+    }
     if (b.action === "feature") await db().update(rooms).set({ featured: b.featured }).where(eq(rooms.code, b.code));
     else await postAnchor(room, b.label, Math.round(b.lagS * 1000));
     return json({ ok: true });
