@@ -47,6 +47,9 @@ Judge Mode API (create, join, start idempotent, steps once/early 425/non-member 
   - UI: a "🌊 That moment rippled through N screens" pill for 3 min after the moment hits my screen, plus "The Wave (N)" in the room menu. Sheet: animated dots lighting up along a time axis (overlaps go to a second lane), list with offsets, caption "⚡ first, 🦕 last. Every reaction waited for each screen." (no "0 spoilers" claim, since we can't see other people's spoil-me taps).
   - Story export: 1080×1920 PNG drawn on a canvas (no new dependency), Web Share with files, download fallback. Names, avatars and timings only. ~0.2 s. Tracks `wave_shared`.
   - Tested in the browser (demo transport): card, caption, lanes, story image checked visually.
+- **Crowd auto-calibration**, behind `NEXT_PUBLIC_FEATURE_AUTO_CALIBRATION=1` (`timing/calibration.ts`, tested). At each moment I reacted to, every friend gives an estimate of my real lag: `my first reaction's server time − theirs + their lag`. Median over all friends and moments; needs ≥ 2 shared moments and a difference ≥ 3 s. A card offers "Set my lag to 30s" / "Not now" (comes back only after a new shared moment). Never applied silently; applying logs `lag_set` with source `crowd`. Off in replay. The estimate doesn't depend on my own stamp, so once applied the hint disappears.
+  - Moment window widened from 10 s to 15 s so someone ~10 s off still lands in the moment. Much larger errors need Sync Check.
+  - Tested in the browser (demo transport): seeded reactions 10 s later than a 20 s setting → "about 10s further behind… Set my lag to 30s"; Apply → +30s saved, hint gone; Not now hides it.
 - Fixes found while testing: countdowns could show a stale time for one second after a quiet period (`useNow` now ticks immediately); anchor senders (the host bot) no longer count as room members on the leaderboard or the wave.
 
 ## Next

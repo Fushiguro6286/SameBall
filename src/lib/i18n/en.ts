@@ -173,6 +173,13 @@ export const en = {
     dismiss: "Dismiss",
   },
 
+  calibrate: {
+    later: (s: number, n: number) => `🎯 From your squad's reactions at ${n} moments, your screen looks about ${s}s further behind than your setting.`,
+    earlier: (s: number, n: number) => `🎯 From your squad's reactions at ${n} moments, your screen looks about ${s}s closer to live than your setting.`,
+    apply: (s: number) => `Set my lag to ${s}s`,
+    dismiss: "Not now",
+  },
+
   schedule: {
     field: "Starts at (optional)",
     startsIn: (ms: number) => {

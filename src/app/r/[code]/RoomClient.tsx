@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { CalibrationCard } from "@/components/CalibrationCard";
 import { ChatTimeline } from "@/components/ChatTimeline";
 import { Composer } from "@/components/Composer";
 import { ConnBanner } from "@/components/ConnBanner";
@@ -28,6 +29,7 @@ import { AVATARS, FEATURES, LAG_SOURCES, QUICK_CHIPS, asSport, type Sport } from
 import { useNow } from "@/lib/client/useNow";
 import { t } from "@/lib/i18n";
 import { useRoom, type RoomSession } from "@/lib/room/useRoom";
+import { suggestLag } from "@/lib/timing/calibration";
 
 const DEFAULT_SOURCE = LAG_SOURCES.find((s) => s.id === "streaming")!;
 const TV_SOURCE = LAG_SOURCES.find((s) => s.id === "tv")!;
@@ -287,6 +289,8 @@ function RoomView({
   const [confirmAll, setConfirmAll] = useState(false);
   const [waveOpen, setWaveOpen] = useState(false);
   const [waveSeen, setWaveSeen] = useState<string | null>(null);
+  /** Shared-moment count when the calibration hint was dismissed; it returns only after new evidence. */
+  const [calDismissedAt, setCalDismissedAt] = useState(0);
   const [origin, setOrigin] = useState("");
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- window is browser-only
@@ -318,6 +322,7 @@ function RoomView({
   const waveMembers = replay ? room.lags : boardEntries;
   const latestMoment = FEATURES.wave ? room.moments.at(-1) : undefined;
   const waveNow = useNow(!!latestMoment, 15_000, room.clockOffset);
+  const lagHint = FEATURES.autoCalibration && !replay ? suggestLag(room.moments, session.guestId, room.lagMs) : null;
   const showWavePill = !!latestMoment && latestMoment.id !== waveSeen && waveNow - (latestMoment.matchTime + room.lagMs) < WAVE_FRESH_MS;
   const canChat = room.ready && (!replay || synced);
 
@@ -431,6 +436,16 @@ function RoomView({
         <button onClick={unlockSound} className="mx-auto mb-1 rounded-full border border-line bg-surface-2 px-3 py-1 text-xs text-muted">
           {t.roar.soundOn}
         </button>
+      )}
+      {lagHint && lagHint.moments > calDismissedAt && (
+        <CalibrationCard
+          s={lagHint}
+          onApply={() => {
+            setSource("crowd");
+            room.setLag(lagHint.lag, "crowd");
+          }}
+          onDismiss={() => setCalDismissedAt(lagHint.moments)}
+        />
       )}
       {showWavePill && (
         <div className="mx-auto mb-1 flex max-w-xl items-center gap-1 px-3">

@@ -44,4 +44,5 @@ export const FEEDBACK_AFTER_MS = 20 * 60_000;
 export const FEATURES = {
   ghostCrowd: process.env.NEXT_PUBLIC_FEATURE_GHOST_CROWD === "1",
   wave: process.env.NEXT_PUBLIC_FEATURE_WAVE === "1",
+  autoCalibration: process.env.NEXT_PUBLIC_FEATURE_AUTO_CALIBRATION === "1",
 };
