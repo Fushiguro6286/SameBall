@@ -5,6 +5,8 @@ const guestId = z.string().regex(/^g_[A-Za-z0-9]{20}$/);
 const roomCode = z.string().regex(/^[A-HJ-NP-Z2-9]{6}$/);
 const displayName = z.string().trim().min(1).max(NAME_MAX);
 const avatar = z.enum(AVATARS);
+/** Server-issued guest key (see lib/auth.ts). */
+const key = z.string().min(16).max(64);
 
 export const SessionReq = z.object({
   guestId: guestId.optional(),
@@ -13,11 +15,13 @@ export const SessionReq = z.object({
   roomCode: roomCode.optional(),
   ref: guestId.optional(),
   test: z.boolean().optional(),
+  key: key.optional(),
 });
 export type SessionReq = z.infer<typeof SessionReq>;
 
 export const SessionRes = z.object({
   guestId,
+  key: z.string(),
   token: z.string(),
   appKey: z.string(),
   area: z.string(),
@@ -29,6 +33,7 @@ export type SessionRes = z.infer<typeof SessionRes>;
 
 export const CreateRoomReq = z.object({
   guestId,
+  key,
   roomName: z.string().trim().min(1).max(ROOM_NAME_MAX),
   sport: z.enum(SPORTS),
   /** Optional scheduled start (ISO). */
@@ -71,6 +76,7 @@ export const MetricsReq = z.object({
 
 export const FeedbackReq = z.object({
   guestId,
+  key,
   roomCode: roomCode.optional(),
   helpful: z.boolean(),
   comment: z.string().trim().max(500).optional(),
@@ -87,11 +93,14 @@ export const TryReq = z.object({
   name: displayName.optional(),
   avatar: avatar.optional(),
   test: z.boolean().optional(),
+  key: key.optional(),
 });
-/** { guestId, code }: Judge Mode start, presence heartbeat. */
-export const TryActionReq = z.object({ guestId, code: roomCode });
-export const TryStepReq = z.object({ guestId, code: roomCode, step: z.number().int().min(0).max(30) });
+/** { guestId, key, code }: Judge Mode start, presence heartbeat. */
+export const TryActionReq = z.object({ guestId, key, code: roomCode });
+export const TryStepReq = z.object({ guestId, key, code: roomCode, step: z.number().int().min(0).max(30) });
+export const ModerateReq = z.object({ guestId, key, code: roomCode, targetId: z.string().max(64), action: z.enum(["mute", "remove"]) });
+export const ReportReq = z.object({ guestId, key, code: roomCode, targetId: z.string().max(64), reason: z.string().trim().max(300).optional() });
 
-export const DeleteDataReq = z.object({ guestId });
+export const DeleteDataReq = z.object({ guestId, key: key.optional() });
 
 export const textMessage = z.string().trim().min(1).max(MESSAGE_MAX);

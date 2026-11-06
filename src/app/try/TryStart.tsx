@@ -17,8 +17,8 @@ export function TryStart() {
     setError(null);
     try {
       const p = loadProfile();
-      const res = await startTryApi({ guestId: p?.guestId, name: p?.name, avatar: p?.avatar });
-      saveProfile({ guestId: res.guestId, name: res.name, avatar: res.avatar });
+      const res = await startTryApi({ guestId: p?.guestId, key: p?.key, name: p?.name, avatar: p?.avatar });
+      saveProfile({ guestId: res.guestId, key: res.key, name: res.name, avatar: res.avatar });
       setMetricsUser(res.guestId);
       rememberRoom({ code: res.code, name: t.try.panelLabel });
       router.push(`/r/${res.code}`);

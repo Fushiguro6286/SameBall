@@ -1,5 +1,6 @@
-import { and, eq, gt, sql } from "drizzle-orm";
+import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { TryActionReq } from "@/lib/api-schemas";
+import { checkKey } from "@/lib/auth";
 import { db, roomMembers } from "@/lib/db";
 import { clientIp, rateLimit } from "@/lib/guard";
 import { body, fail, json } from "@/lib/http";
@@ -11,11 +12,12 @@ export async function POST(req: Request) {
   if (!rateLimit(`presence:${clientIp(req)}`, 30, 60_000)) return fail(429, "rate_limited");
   const b = await body(req, TryActionReq);
   if (b instanceof Response) return b;
+  if (!checkKey(b.guestId, b.key)) return fail(401, "bad_key");
   try {
     const beat = await db()
       .update(roomMembers)
       .set({ lastSeenAt: new Date() })
-      .where(and(eq(roomMembers.roomCode, b.code), eq(roomMembers.userId, b.guestId)))
+      .where(and(eq(roomMembers.roomCode, b.code), eq(roomMembers.userId, b.guestId), isNull(roomMembers.removedAt)))
       .returning({ u: roomMembers.userId });
     if (!beat.length) return fail(403, "not_member");
     const [row] = await db()

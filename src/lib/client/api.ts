@@ -27,18 +27,34 @@ export function isTestBrowser(): boolean {
   }
 }
 
-export const startSession = async (req: SessionReq) =>
-  SessionRes.parse(await post("/api/session", { ...req, test: req.test || isTestBrowser() || undefined }));
+export interface Auth {
+  guestId: string;
+  key: string;
+}
 
-export const createRoomApi = (req: { guestId: string; roomName: string; sport: string; startsAt?: string }) =>
+export async function startSession(req: SessionReq) {
+  const send = (r: SessionReq) => post("/api/session", { ...r, test: r.test || isTestBrowser() || undefined });
+  try {
+    return SessionRes.parse(await send(req));
+  } catch (e) {
+    // This browser lost the key for its guest: start over as a new guest rather than lock the person out.
+    if (e instanceof ApiError && e.code === "bad_key" && req.guestId) return SessionRes.parse(await send({ ...req, guestId: undefined, key: undefined }));
+    throw e;
+  }
+}
+
+export const createRoomApi = (req: Auth & { roomName: string; sport: string; startsAt?: string }) =>
   post<{ code: string; channelId: string; name: string; sport: string }>("/api/rooms", req);
 
-export const startTryApi = (req: { guestId?: string; name?: string; avatar?: string }) =>
-  post<{ guestId: string; name: string; avatar: string; code: string }>("/api/try", { ...req, test: isTestBrowser() || undefined });
-export const tryStartApi = (guestId: string, code: string) => post<{ ok: true }>("/api/try/start", { guestId, code });
-export const tryStepApi = (guestId: string, code: string, step: number) => post<{ ok: true }>("/api/try/step", { guestId, code, step });
+export const startTryApi = (req: { guestId?: string; key?: string; name?: string; avatar?: string }) =>
+  post<{ guestId: string; key: string; name: string; avatar: string; code: string }>("/api/try", { ...req, test: isTestBrowser() || undefined });
+export const tryStartApi = (a: Auth, code: string) => post<{ ok: true }>("/api/try/start", { ...a, code });
+export const tryStepApi = (a: Auth, code: string, step: number) => post<{ ok: true }>("/api/try/step", { ...a, code, step });
 
-export const presenceApi = (guestId: string, code: string) => post<{ watching: number }>("/api/presence", { guestId, code });
+export const presenceApi = (a: Auth, code: string) => post<{ watching: number }>("/api/presence", { ...a, code });
+export const moderateApi = (a: Auth, code: string, targetId: string, action: "mute" | "remove") =>
+  post<{ ok: true }>("/api/moderate", { ...a, code, targetId, action });
+export const reportApi = (a: Auth, code: string, targetId: string, reason?: string) => post<{ ok: true }>("/api/report", { ...a, code, targetId, reason });
 
 export function errorText(e: unknown): string {
   if (e instanceof ApiError) {
@@ -46,6 +62,7 @@ export function errorText(e: unknown): string {
     if (e.code === "name_not_allowed") return t.errors.name;
     if (e.code === "chat_unavailable") return t.errors.chat;
     if (e.code === "room_not_found") return t.room.notFound;
+    if (e.code === "removed") return t.mod.removedYou;
   }
   return t.errors.generic;
 }

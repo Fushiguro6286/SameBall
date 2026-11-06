@@ -19,6 +19,8 @@ export interface RoomSession {
   code: string;
   channelId: string;
   guestId: string;
+  /** Server-issued guest key (absent in demo mode). */
+  key?: string;
   name: string;
   avatar: string;
   demo: boolean;

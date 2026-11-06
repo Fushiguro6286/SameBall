@@ -21,7 +21,7 @@ import { ProfileFields } from "@/components/ProfileFields";
 import { Sheet } from "@/components/Sheet";
 import { errorText, startSession } from "@/lib/client/api";
 import { setMetricsUser, track } from "@/lib/client/metrics";
-import { loadProfile, loadRoomPrefs, loadSetting, rememberRoom, saveProfile, saveSetting } from "@/lib/client/storage";
+import { loadBlocked, loadProfile, loadRoomPrefs, loadSetting, rememberRoom, saveBlocked, saveProfile, saveSetting } from "@/lib/client/storage";
 import { AVATARS, LAG_SOURCES, QUICK_CHIPS, asSport, type Sport } from "@/lib/config";
 import { t } from "@/lib/i18n";
 import { useRoom, type RoomSession } from "@/lib/room/useRoom";
@@ -45,16 +45,16 @@ function demoGuestId(): string {
 
 // Judge Mode "second window": a separate per-tab guest on the TV feed, flagged as test so one person isn't counted twice.
 const SECOND_KEY = (code: string) => `sb-second:${code}`;
-function readSecondId(code: string): string | undefined {
+function readSecond(code: string): { guestId?: string; key?: string } {
   try {
-    return sessionStorage.getItem(SECOND_KEY(code)) ?? undefined;
+    return JSON.parse(sessionStorage.getItem(SECOND_KEY(code)) ?? "{}");
   } catch {
-    return undefined;
+    return {};
   }
 }
-function saveSecondId(code: string, id: string) {
+function saveSecond(code: string, guestId: string, key: string) {
   try {
-    sessionStorage.setItem(SECOND_KEY(code), id);
+    sessionStorage.setItem(SECOND_KEY(code), JSON.stringify({ guestId, key }));
   } catch {
     // ignore
   }
@@ -66,6 +66,7 @@ export function RoomClient({
   sport,
   kind = "room",
   startsAt,
+  ownerId,
   demo,
 }: {
   code: string;
@@ -73,6 +74,7 @@ export function RoomClient({
   sport: string;
   kind?: string;
   startsAt?: number;
+  ownerId?: string;
   demo: boolean;
 }) {
   const router = useRouter();
@@ -98,15 +100,15 @@ export function RoomClient({
       const prev = loadProfile();
       const ref = params.get("ref") ?? undefined;
       const res = await startSession({
-        guestId: second ? readSecondId(code) : prev?.guestId,
+        ...(second ? readSecond(code) : { guestId: prev?.guestId, key: prev?.key }),
         name: n,
         avatar: a as (typeof AVATARS)[number],
         roomCode: code,
         ref: !second && ref && /^g_[A-Za-z0-9]{20}$/.test(ref) ? ref : undefined,
         test: second || undefined,
       });
-      if (second) saveSecondId(code, res.guestId);
-      else saveProfile({ guestId: res.guestId, name: n, avatar: a });
+      if (second) saveSecond(code, res.guestId, res.key);
+      else saveProfile({ guestId: res.guestId, key: res.key, name: n, avatar: a });
       setMetricsUser(res.guestId);
       const room = res.room!;
       if (!second) rememberRoom({ code: room.code, name: room.name });
@@ -120,6 +122,7 @@ export function RoomClient({
         code: room.code,
         channelId: room.channelId,
         guestId: res.guestId,
+        key: res.key,
         name: n,
         avatar: a,
         demo: false,
@@ -154,7 +157,7 @@ export function RoomClient({
   }, []);
 
   if (phase === "room" && session)
-    return <RoomView session={session} roomName={currentName} sport={asSport(sport)} isTry={kind === "try"} second={second} startsAt={startsAt} notice={notice} />;
+    return <RoomView session={session} roomName={currentName} sport={asSport(sport)} isTry={kind === "try"} second={second} startsAt={startsAt} ownerId={ownerId} notice={notice} />;
 
   return (
     <main className="floodlight flex flex-1 flex-col items-center justify-center px-4 py-10">
@@ -194,6 +197,7 @@ function RoomView({
   isTry,
   second,
   startsAt,
+  ownerId,
   notice,
 }: {
   session: RoomSession;
@@ -202,6 +206,7 @@ function RoomView({
   isTry: boolean;
   second: boolean;
   startsAt?: number;
+  ownerId?: string;
   notice: string | null;
 }) {
   const params = useSearchParams();
@@ -218,7 +223,20 @@ function RoomView({
   const [soundOn, setSoundOn] = useState(false);
   const [muted, setMuted] = useState(() => loadSetting("muted", false));
   const [suspense, setSuspense] = useState(() => loadSetting("suspense", true));
+  const [blocked, setBlocked] = useState<ReadonlySet<string>>(() => new Set(loadBlocked()));
+  const blockedRef = useRef(blocked);
+  useEffect(() => {
+    blockedRef.current = blocked;
+  }, [blocked]);
+  const toggleBlock = (id: string) => {
+    const next = new Set(blocked);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    saveBlocked([...next]);
+    setBlocked(next);
+  };
   const room = useRoom(session, prefs.lagMs, prefs.source, (r) => {
+    if (blockedRef.current.has(r.senderId)) return;
     crowd.current ??= new Crowd();
     const { level, holdMs } = crowd.current.roar(r.intensity, r.senderId, r.dur);
     setGlow(level);
@@ -255,13 +273,15 @@ function RoomView({
     document.title = counts ? `(${counts}) ${roomName}` : roomName;
   }, [room.unseen, room.lockedCount, roomName]);
 
-  const watching = useWatching(session.guestId, session.code, !session.demo);
+  const watching = useWatching(session.guestId, session.key ?? "", session.code, !session.demo && !!session.key);
   // My own entry always shows my current lag, even before my latest stamp goes out.
   const boardEntries = [
     ...room.lags.filter((l) => l.senderId !== session.guestId),
     { senderId: session.guestId, name: session.name, avatar: session.avatar, lag: room.lagMs },
   ];
   const lagS = Math.round(room.lagMs / 1000);
+  const view = blocked.size ? room.view.filter((v) => !blocked.has(v.senderId)) : room.view;
+  const pending = blocked.size ? room.pending.filter((p) => !blocked.has(p.senderId)) : room.pending;
   const empty = room.ready && room.view.length === 0;
 
   return (
@@ -273,7 +293,15 @@ function RoomView({
         </Link>
         <div className="min-w-0 flex-1">
           <h1 className="truncate font-display text-2xl leading-tight">{roomName}</h1>
-          <LagBoard entries={boardEntries} myId={session.guestId} watching={watching} />
+          <LagBoard
+            entries={boardEntries}
+            auth={session.key ? { guestId: session.guestId, key: session.key } : null}
+            code={session.code}
+            isOwner={!!ownerId && ownerId === session.guestId}
+            watching={watching}
+            blocked={blocked}
+            onToggleBlock={toggleBlock}
+          />
         </div>
         <button
           onClick={() => setLagOpen(true)}
@@ -295,13 +323,13 @@ function RoomView({
 
       {isTry && (
         <TryPanel
-          guestId={session.guestId}
+          auth={{ guestId: session.guestId, key: session.key ?? "" }}
           code={session.code}
           anchors={room.anchors}
           lagMs={room.lagMs}
           clockOffset={room.clockOffset}
           lockedCount={room.lockedCount}
-          pending={room.pending}
+          pending={pending}
           heldBack={room.heldBack}
           ready={room.ready}
         />
@@ -329,16 +357,16 @@ function RoomView({
           {origin && <InvitePanel url={inviteUrl} roomName={roomName} />}
         </section>
       ) : (
-        <ChatTimeline items={room.view} clockOffset={room.clockOffset} announce={room.announce} onSpoil={room.spoil} />
+        <ChatTimeline items={view} clockOffset={room.clockOffset} announce={room.announce} onSpoil={room.spoil} />
       )}
 
-      {!session.demo && !isTry && <FeedbackPrompt guestId={session.guestId} roomCode={session.code} />}
+      {!session.demo && !isTry && <FeedbackPrompt guestId={session.guestId} guestKey={session.key ?? ""} roomCode={session.code} />}
       {!soundOn && !muted && room.ready && (
         <button onClick={unlockSound} className="mx-auto mb-1 rounded-full border border-line bg-surface-2 px-3 py-1 text-xs text-muted">
           {t.roar.soundOn}
         </button>
       )}
-      {suspense && <HypeStrip pending={room.pending} clockOffset={room.clockOffset} />}
+      {suspense && <HypeStrip pending={pending} clockOffset={room.clockOffset} />}
       <Composer disabled={!room.ready} onSend={room.sendText} chips={QUICK_CHIPS[sport]}>
         <RoarButton disabled={!room.ready} onStart={() => !soundOn && !muted && unlockSound()} onRoar={(i, d) => room.sendRoar(i, d).catch(() => undefined)} />
       </Composer>

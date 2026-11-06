@@ -104,6 +104,11 @@ export async function leaveGroup(channelId: string, userId: string) {
   await ncCall("/v4/group-channel/leave", { channelId, userIds: [userId] }, [25418]);
 }
 
+/** Mutes a member in one group channel for a while. */
+export async function muteInGroup(channelId: string, userId: string, durationMinutes: number) {
+  await ncCall("/v4/group-channel/user/mute-list/add", { channelId, userIds: [userId], durationMinutes });
+}
+
 /** Send as a given user (Judge Mode bots). `content` is the message-type's JSON. */
 export async function sendGroupMessage(fromUserId: string, channelId: string, messageType: string, content: object) {
   await ncCall("/v4/group-channel/message/send", {

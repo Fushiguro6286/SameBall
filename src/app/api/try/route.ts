@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { TryReq } from "@/lib/api-schemas";
+import { checkKey, guestKey } from "@/lib/auth";
 import { AVATARS } from "@/lib/config";
 import { db, profiles } from "@/lib/db";
 import { clientIp, isProfane, newGuestId, rateLimit } from "@/lib/guard";
@@ -19,12 +20,14 @@ export async function POST(req: Request) {
     const avatar = existing?.avatar ?? b.avatar ?? AVATARS[Math.floor(Math.random() * AVATARS.length)];
     if (!existing) {
       guestId = newGuestId();
-      await db().insert(profiles).values({ id: guestId, name, avatar, isTest: !!b.test });
+      await db().insert(profiles).values({ id: guestId, name, avatar, isTest: !!b.test, keyed: true });
     } else if (existing.isBot) {
       return fail(400, "invalid_request");
+    } else if (existing.keyed && !checkKey(existing.id, b.key)) {
+      return fail(401, "bad_key");
     }
     const room = await createTryRoom(guestId!);
-    return json({ guestId, name, avatar, code: room.code });
+    return json({ guestId, key: guestKey(guestId!), name, avatar, code: room.code });
   } catch (e) {
     console.error("try failed", (e as Error).message);
     return fail(502, "chat_unavailable");

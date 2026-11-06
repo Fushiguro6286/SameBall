@@ -7,7 +7,7 @@ import { t } from "@/lib/i18n";
 const askedKey = (code: string) => `sb-feedback:${code}`;
 
 /** Asks once per room, after 20 minutes in it. */
-export function FeedbackPrompt({ guestId, roomCode }: { guestId: string; roomCode: string }) {
+export function FeedbackPrompt({ guestId, guestKey, roomCode }: { guestId: string; guestKey: string; roomCode: string }) {
   const [show, setShow] = useState(false);
   const [helpful, setHelpful] = useState<boolean | null>(null);
   const [comment, setComment] = useState("");
@@ -27,7 +27,7 @@ export function FeedbackPrompt({ guestId, roomCode }: { guestId: string; roomCod
     await fetch("/api/feedback", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ guestId, roomCode, helpful: h, comment: c || undefined }),
+      body: JSON.stringify({ guestId, key: guestKey, roomCode, helpful: h, comment: c || undefined }),
     }).catch(() => undefined);
   };
 

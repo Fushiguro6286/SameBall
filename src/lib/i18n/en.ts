@@ -175,6 +175,22 @@ export const en = {
     keep: "Keep mine",
   },
 
+  mod: {
+    actionsFor: (name: string) => `Actions for ${name}`,
+    block: "Block",
+    unblock: "Unblock",
+    blockedTag: "blocked",
+    blocked: (name: string) => `${name} is blocked. You won't see their messages or roars.`,
+    unblocked: (name: string) => `${name} is unblocked.`,
+    report: "Report",
+    reported: "Reported. Thanks, we'll take a look.",
+    mute: "Mute 1 hour",
+    muted: (name: string) => `${name} is muted for 1 hour.`,
+    remove: "Remove from room",
+    removed: (name: string) => `${name} was removed.`,
+    removedYou: "You were removed from this room by its creator.",
+  },
+
   board: {
     title: "Lag leaderboard",
     help: "How far each friend's feed is behind the fastest one in the room.",

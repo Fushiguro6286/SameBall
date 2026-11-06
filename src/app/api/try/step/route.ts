@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   if (b instanceof Response) return b;
   if (b.step >= TRY_STEPS.length) return fail(400, "invalid_request");
   try {
-    const room = await loadTryRoom(b.code, b.guestId);
+    const room = await loadTryRoom(b.code, b.guestId, b.key);
     if (room instanceof Response) return room;
     const r = await sendTryStep(room, b.step);
     return r === "early" ? fail(425, "too_early") : json({ ok: true, result: r });

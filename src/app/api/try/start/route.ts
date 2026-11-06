@@ -9,7 +9,7 @@ export async function POST(req: Request) {
   const b = await body(req, TryActionReq);
   if (b instanceof Response) return b;
   try {
-    const room = await loadTryRoom(b.code, b.guestId);
+    const room = await loadTryRoom(b.code, b.guestId, b.key);
     if (room instanceof Response) return room;
     await startTry(room);
     return json({ ok: true });

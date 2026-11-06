@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { ApiError, tryStartApi, tryStepApi } from "@/lib/client/api";
+import { ApiError, tryStartApi, tryStepApi, type Auth } from "@/lib/client/api";
 import { useNow } from "@/lib/client/useNow";
 import { t } from "@/lib/i18n";
 import { HYPE_HIGH, hypeHeat, type Pending } from "@/lib/timing/hype";
@@ -18,7 +18,7 @@ const ballLabel = (r: BallResult) => (r === "W" ? "W" : r === 0 ? "•" : String
  * The bots' messages are sent by the server as each moment happens; this component only asks for them on time.
  */
 export function TryPanel({
-  guestId,
+  auth,
   code,
   anchors,
   lagMs,
@@ -28,7 +28,7 @@ export function TryPanel({
   heldBack,
   ready,
 }: {
-  guestId: string;
+  auth: Auth;
   code: string;
   anchors: Anchor[];
   lagMs: number;
@@ -38,6 +38,7 @@ export function TryPanel({
   heldBack: number;
   ready: boolean;
 }) {
+  const { guestId, key } = auth;
   const start = anchors.find((a) => a.label === TRY_ANCHOR_LABEL && BOT_IDS.has(a.senderId))?.matchTime ?? null;
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState(false);
@@ -52,7 +53,7 @@ export function TryPanel({
       TRY_STEPS.forEach((s, i) => {
         if (requested.current.has(i) || serverNow < start + s.t * 1000) return;
         requested.current.add(i);
-        tryStepApi(guestId, code, i).catch((e) => {
+        tryStepApi({ guestId, key }, code, i).catch((e) => {
           // Too early (clock skew) or a hiccup: try again on a later tick.
           setTimeout(() => requested.current.delete(i), e instanceof ApiError && e.status === 425 ? 300 : 2000);
         });
@@ -61,13 +62,13 @@ export function TryPanel({
     tick();
     const id = setInterval(tick, 250);
     return () => clearInterval(id);
-  }, [start, clockOffset, guestId, code]);
+  }, [start, clockOffset, guestId, key, code]);
 
   const begin = async () => {
     setStarting(true);
     setError(false);
     try {
-      await tryStartApi(guestId, code);
+      await tryStartApi({ guestId, key }, code);
     } catch {
       setError(true);
       setStarting(false);

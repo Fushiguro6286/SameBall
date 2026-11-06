@@ -2,6 +2,8 @@
 
 export interface Profile {
   guestId?: string;
+  /** Server-issued key that proves this browser owns guestId. */
+  key?: string;
   name: string;
   avatar: string;
 }
@@ -44,6 +46,10 @@ export const saveRoomPrefs = (code: string, p: RoomPrefs) => write(`sb-room:${co
 /** Per-browser on/off settings: "suspense" (Hype Radar), "muted" (stadium sound). */
 export const loadSetting = (key: string, fallback: boolean) => read<boolean>(`sb-set:${key}`, fallback);
 export const saveSetting = (key: string, on: boolean) => write(`sb-set:${key}`, on);
+
+/** Senders this browser has blocked (hidden everywhere, all rooms). */
+export const loadBlocked = () => read<string[]>("sb-blocked", []);
+export const saveBlocked = (ids: string[]) => write("sb-blocked", ids.slice(-500));
 
 export function clearAll() {
   try {

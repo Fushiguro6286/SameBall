@@ -10,6 +10,7 @@ export const profiles = pgTable("profiles", {
   isBot: boolean("is_bot").notNull().default(false),
   isTest: boolean("is_test").notNull().default(false),
   referrer: text("referrer"),
+  keyed: boolean("keyed").notNull().default(false), // once a guest key was issued, every call must carry it
   createdAt: ts("created_at"),
   lastSeenAt: ts("last_seen_at"),
 });
@@ -41,6 +42,7 @@ export const roomMembers = pgTable(
     userId: text("user_id").notNull(),
     joinedAt: ts("joined_at"),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }), // "watching now" heartbeat
+    removedAt: timestamp("removed_at", { withTimezone: true }), // removed by the room creator; can't rejoin
   },
   (t) => [primaryKey({ columns: [t.roomCode, t.userId] }), index("room_members_user_idx").on(t.userId)],
 );
@@ -65,5 +67,14 @@ export const feedback = pgTable("feedback", {
   roomCode: text("room_code"),
   helpful: boolean("helpful").notNull(),
   comment: text("comment"),
+  createdAt: ts("created_at"),
+});
+
+export const reports = pgTable("reports", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  reporterId: text("reporter_id").notNull(),
+  targetId: text("target_id").notNull(),
+  roomCode: text("room_code").notNull(),
+  reason: text("reason"),
   createdAt: ts("created_at"),
 });

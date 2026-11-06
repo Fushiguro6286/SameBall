@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { db, roomMembers, rooms } from "./db";
 import { randomCode } from "./guard";
 import { ROOM_CAP, type Sport } from "./config";
@@ -56,9 +56,18 @@ export async function isMember(code: string, userId: string) {
   const [m] = await db()
     .select({ u: roomMembers.userId })
     .from(roomMembers)
-    .where(and(eq(roomMembers.roomCode, code), eq(roomMembers.userId, userId)))
+    .where(and(eq(roomMembers.roomCode, code), eq(roomMembers.userId, userId), isNull(roomMembers.removedAt)))
     .limit(1);
   return !!m;
+}
+
+async function isRemoved(code: string, userId: string) {
+  const [m] = await db()
+    .select({ r: roomMembers.removedAt })
+    .from(roomMembers)
+    .where(and(eq(roomMembers.roomCode, code), eq(roomMembers.userId, userId)))
+    .limit(1);
+  return !!m?.r;
 }
 
 async function recordMember(room: Room, userId: string) {
@@ -75,6 +84,7 @@ async function recordMember(room: Room, userId: string) {
 export async function joinRoom(code: string, userId: string, depth = 0): Promise<Room> {
   const room = await getRoom(code);
   if (!room) throw new Error("room not found");
+  if (await isRemoved(room.code, userId)) throw new Error("removed");
   if (await isMember(room.code, userId)) {
     await joinGroup(room.channelId, userId); // idempotent; repairs drift if Nexconn lost the membership
     return room;

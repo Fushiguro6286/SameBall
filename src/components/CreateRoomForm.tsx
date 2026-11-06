@@ -32,11 +32,12 @@ export function CreateRoomForm() {
     setError(null);
     try {
       const prev = loadProfile();
-      const s = await startSession({ guestId: prev?.guestId, name: name.trim(), avatar: avatar as (typeof AVATARS)[number] });
-      saveProfile({ guestId: s.guestId, name: name.trim(), avatar });
+      const s = await startSession({ guestId: prev?.guestId, key: prev?.key, name: name.trim(), avatar: avatar as (typeof AVATARS)[number] });
+      saveProfile({ guestId: s.guestId, key: s.key, name: name.trim(), avatar });
       setMetricsUser(s.guestId);
       const room = await createRoomApi({
         guestId: s.guestId,
+        key: s.key,
         roomName: roomName.trim(),
         sport,
         startsAt: startsAt ? new Date(startsAt).toISOString() : undefined,

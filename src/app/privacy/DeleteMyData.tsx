@@ -7,7 +7,8 @@ import { t } from "@/lib/i18n";
 export function DeleteMyData() {
   const [state, setState] = useState<"idle" | "busy" | "done" | "none" | "error">("idle");
   const del = async () => {
-    const id = loadProfile()?.guestId;
+    const profile = loadProfile();
+    const id = profile?.guestId;
     if (!id) {
       clearAll();
       return setState("none");
@@ -16,7 +17,7 @@ export function DeleteMyData() {
     const res = await fetch("/api/privacy/delete", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ guestId: id }),
+      body: JSON.stringify({ guestId: id, key: profile?.key }),
     }).catch(() => null);
     if (!res?.ok) return setState("error");
     clearAll();
