@@ -45,6 +45,6 @@ Checked against `@nexconn/chat` and `@nexconn/engine` **26.2.1** (`index.d.ts`) 
 
 1. **Data center:** which region is the app in (SG or NA)? That sets `NEXCONN_AREA` and the API domains.
 2. Please turn on these Console settings: **pre-join history for new members**, **profanity filter**, the **Webhooks** URL (once deployed), and if offered, **"Subscribe to user online status"** (optional).
-3. **Vercel:** the Vercel CLI isn't installed here. Should I deploy with `npx vercel` once you've logged in (`! npx vercel login`), or will you import the GitHub repo in the Vercel dashboard?
+3. **Vercel:** you're logged in through `npx vercel`, but the account has more than one team and the production deploy needs your approval. Which team should the `sameball` project go in? Or approve: `! npx vercel deploy --prod --yes --project sameball --scope <team-slug>`.
 4. **GitHub:** which repo name and account should I push the public repo to?
 5. **Neon:** should I provision Neon through the Vercel Marketplace, or will you paste a `DATABASE_URL`?
