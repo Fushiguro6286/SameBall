@@ -26,7 +26,7 @@ export function ProfileFields({
           value={name}
           onChange={(e) => onName(e.target.value)}
           placeholder={t.profile.namePlaceholder}
-          className="w-full rounded-xl border border-line bg-surface-2 px-4 py-3 text-base placeholder:text-muted/70"
+          className="w-full rounded-xl border border-line bg-surface-2 px-4 py-3 text-base placeholder:text-muted"
         />
       </label>
       <fieldset>

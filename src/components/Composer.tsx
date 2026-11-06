@@ -8,11 +8,14 @@ export function Composer({
   disabled,
   onSend,
   chips = [],
+  chipsLead,
   children,
 }: {
   disabled: boolean;
   onSend: (text: string) => Promise<void>;
   chips?: readonly string[];
+  /** Rendered first in the chip row (the chip pack picker). */
+  chipsLead?: ReactNode;
   /** Rendered beside the input (the roar button). */
   children?: ReactNode;
 }) {
@@ -48,6 +51,7 @@ export function Composer({
       )}
       {chips.length > 0 && (
         <div role="group" aria-label={t.room.quickChat} className="no-scrollbar -mx-3 mb-2 flex gap-2 overflow-x-auto px-3">
+          {chipsLead}
           {chips.map((c) => (
             <button
               key={c}
@@ -80,7 +84,7 @@ export function Composer({
           autoComplete="off"
           enterKeyHint="send"
           disabled={disabled}
-          className="min-w-0 flex-1 rounded-full border border-line bg-surface-2 px-4 py-3 text-base placeholder:text-muted/70 disabled:opacity-50"
+          className="min-w-0 flex-1 rounded-full border border-line bg-surface-2 px-4 py-3 text-base placeholder:text-muted disabled:opacity-50"
         />
         <button
           type="submit"

@@ -69,6 +69,7 @@ export const METRIC_EVENTS = [
   "recap_opened",
   "recap_shared",
   "paused",
+  "moment_card_shared",
 ] as const;
 
 export const MetricsReq = z.object({

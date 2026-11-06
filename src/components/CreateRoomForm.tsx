@@ -70,7 +70,7 @@ export function CreateRoomForm() {
           value={roomName}
           onChange={(e) => setRoomName(e.target.value)}
           placeholder={t.create.roomNamePlaceholder}
-          className="w-full rounded-xl border border-line bg-surface-2 px-4 py-3 text-base placeholder:text-muted/70"
+          className="w-full rounded-xl border border-line bg-surface-2 px-4 py-3 text-base placeholder:text-muted"
         />
       </label>
       <fieldset>

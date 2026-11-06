@@ -163,7 +163,7 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
   const [attempt, setAttempt] = useState(0);
   const [ready, setReady] = useState(false);
   const [unseen, setUnseen] = useState(0);
-  const [announce, setAnnounce] = useState("");
+  const [announce, setAnnounce] = useState<{ name: string; text: string } | null>(null);
   const [clockOffset, setClockOffset] = useState(0);
 
   useEffect(() => {
@@ -177,7 +177,7 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
       const others = msgs.filter((m) => m.kind === "text" && m.senderId !== s.guestId);
       if (!others.length) return;
       const last = others[others.length - 1];
-      setAnnounce(`${last.senderName}: ${last.text ?? ""}`);
+      setAnnounce({ name: last.senderName, text: last.text ?? "" });
       if (document.visibilityState === "hidden") setUnseen((n) => n + others.length);
     };
 

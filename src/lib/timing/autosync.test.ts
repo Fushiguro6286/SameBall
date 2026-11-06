@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { observe, reactionKey, suggestSync } from "./autosync";
 import type { ChatMsg } from "./engine";
+import { CHIP_PACKS } from "../config";
 
 let n = 0;
 const msg = (senderId: string, text: string, sentTime: number, lag: number, kind: ChatMsg["kind"] = "text"): ChatMsg => ({
@@ -25,6 +26,12 @@ describe("reaction types", () => {
     expect(reactionKey(msg("a", "छक्का!!", 0, 0))).toBe("six");
     expect(reactionKey(msg("a", "", 0, 0, "roar"))).toBe("roar");
     expect(reactionKey(msg("a", "anyone want chai?", 0, 0))).toBeNull();
+  });
+
+  it("classifies every regional chip pack's six / out / four", () => {
+    for (const p of Object.values(CHIP_PACKS)) {
+      expect(p.cricket.slice(0, 3).map((c) => reactionKey(msg("a", c, 0, 0)))).toEqual(["six", "out", "four"]);
+    }
   });
 });
 

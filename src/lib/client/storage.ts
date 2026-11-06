@@ -69,6 +69,10 @@ export function loadLang(): Lang {
 export const saveLang = (l: Lang) => write("sb-lang", l);
 
 /** Per-browser on/off settings: "suspense" (Hype Radar), "muted" (stadium sound). */
+/** Small per-room choices: the chip pack, the couch-mode friend. */
+export const loadRoomStr = (kind: "chips" | "couch", code: string) => read<string | null>(`sb-${kind}:${code}`, null);
+export const saveRoomStr = (kind: "chips" | "couch", code: string, v: string | null) => write(`sb-${kind}:${code}`, v);
+
 export const loadSetting = (key: string, fallback: boolean) => read<boolean>(`sb-set:${key}`, fallback);
 export const saveSetting = (key: string, on: boolean) => write(`sb-set:${key}`, on);
 

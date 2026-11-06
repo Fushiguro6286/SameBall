@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ChatMsg } from "./engine";
-import { findMoments, waveOf } from "./wave";
+import { findMoments, reachedAllAt, waveOf } from "./wave";
 
 let n = 0;
 const roar = (senderId: string, sentTime: number, lag: number, intensity = 2): ChatMsg => ({
@@ -56,5 +56,16 @@ describe("waveOf", () => {
       ["c", 140_000, 40_000],
     ]);
     expect(w.spreadMs).toBe(40_000);
+  });
+});
+
+describe("moment cards", () => {
+  it("keeps each reactor's first reaction text and knows when the moment reached every screen", () => {
+    const chip = { ...roar("b", 131_000, 30_000), kind: "text" as const, text: "SIX! 🔥", payload: undefined };
+    const [m] = findMoments([roar("a", 100_000, 0), roar("a", 101_500, 0), chip, roar("b", 132_000, 30_000)]);
+    expect(m.reactors.map((r) => r.text)).toEqual([null, "SIX! 🔥"]);
+    // A silent member on a 45 s feed is the last screen to see it.
+    expect(reachedAllAt(m, [{ senderId: "c", name: "c", avatar: "🐼", lag: 45_000 }])).toBe(145_000);
+    expect(reachedAllAt(m, [])).toBe(130_000);
   });
 });

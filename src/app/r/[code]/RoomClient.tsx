@@ -16,6 +16,7 @@ import { LangToggle } from "@/components/Lang";
 import { RoarButton } from "@/components/RoarButton";
 import { StartBanner } from "@/components/StartBanner";
 import { CallCard, CallStartSheet } from "@/components/CallIt";
+import { MomentCard } from "@/components/MomentCard";
 import { NexconnBadge } from "@/components/NexconnBadge";
 import { PauseBar } from "@/components/PauseBar";
 import { RecapSheet } from "@/components/Recap";
@@ -31,18 +32,21 @@ import { ProfileFields } from "@/components/ProfileFields";
 import { Sheet } from "@/components/Sheet";
 import { errorText, startSession } from "@/lib/client/api";
 import { setMetricsUser, track } from "@/lib/client/metrics";
-import { loadBlocked, loadProfile, loadRoomPrefs, loadSetting, loadStand, rememberRoom, saveBlocked, saveProfile, saveSetting, saveStand } from "@/lib/client/storage";
-import { AVATARS, END_LABELS, FEATURES, LAG_SOURCES, QUICK_CHIPS, asSport, type Sport, STADIUM_STANDS, type StandId } from "@/lib/config";
+import { loadBlocked, loadProfile, loadRoomPrefs, loadRoomStr, loadSetting, loadStand, rememberRoom, saveBlocked, saveProfile, saveRoomStr, saveSetting, saveStand } from "@/lib/client/storage";
+import { AVATARS, CHIP_PACKS, END_LABELS, FEATURES, LAG_SOURCES, asChipPack, asSport, chipsFor, type Sport, STADIUM_STANDS, type StandId } from "@/lib/config";
 import { useNow } from "@/lib/client/useNow";
 import { useT } from "@/lib/i18n/client";
 import { useRoom, type RoomSession } from "@/lib/room/useRoom";
 import { suggestSync } from "@/lib/timing/autosync";
+import { reachedAllAt } from "@/lib/timing/wave";
 import { TRY_BOTS } from "@/lib/try-script";
 
 const DEFAULT_SOURCE = LAG_SOURCES.find((s) => s.id === "streaming")!;
 const TV_SOURCE = LAG_SOURCES.find((s) => s.id === "tv")!;
 const REPLAY_AHEAD_MS = 30_000;
 const WAVE_FRESH_MS = 3 * 60_000;
+/** A moment card pops up only if the moment reached everyone this recently (old history stays quiet). */
+const CARD_FRESH_MS = 5 * 60_000;
 
 function demoGuestId(): string {
   // Per tab, so two demo tabs act as two different people.
@@ -329,9 +333,17 @@ function RoomView({
   const [waveOpen, setWaveOpen] = useState(false);
   const [catchupOpen, setCatchupOpen] = useState(false);
   const [waveSeen, setWaveSeen] = useState<string | null>(null);
+  const [cardSeen, setCardSeen] = useState<string | null>(null);
   /** Observation count when the auto-sync hint was dismissed; it returns only after new evidence. */
   const [calDismissedAt, setCalDismissedAt] = useState(0);
   const [origin, setOrigin] = useState("");
+  /** Couch mode: the friend whose screen I share; I follow their delay changes. */
+  const [couchWith, setCouchWith] = useState(() => (FEATURES.couchMode ? loadRoomStr("couch", session.code) : null));
+  const linkCouch = (id: string | null) => {
+    setCouchWith(id);
+    saveRoomStr("couch", session.code, id);
+  };
+  const [pack, setPack] = useState(() => (FEATURES.regionalChips ? asChipPack(loadRoomStr("chips", session.code)) : null));
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- window is browser-only
   useEffect(() => setOrigin(window.location.origin), []);
@@ -350,6 +362,15 @@ function RoomView({
     { senderId: session.guestId, name: session.name, avatar: session.avatar, lag: room.lagMs },
   ];
   const lagS = Math.round(room.lagMs / 1000);
+  const couchLag = couchWith && !replay ? room.lags.find((l) => l.senderId === couchWith)?.lag : undefined;
+  useEffect(() => {
+    if (couchLag === undefined || room.paused || Math.abs(couchLag - room.lagMs) < 500) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- follow the friend's new delay
+    setSource("couch");
+    room.setLag(couchLag, "couch");
+    // Only their changes should move me; my own lag is read, not watched.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [couchLag, room.paused]);
   let view = blocked.size ? room.view.filter((v) => !blocked.has(v.senderId)) : room.view;
   // A replay has hundreds of messages still ahead: show only the next few locked ones, none while paused or before sync.
   if (replay)
@@ -364,7 +385,12 @@ function RoomView({
   const waveNow = useNow(!!latestMoment, 15_000, room.clockOffset);
   // Once I've applied a suggestion (source "crowd"), only real drift brings it back.
   const lagHint = FEATURES.autoCalibration && !replay && !room.paused ? suggestSync(room.syncObs, room.lagMs, source === "crowd") : null;
-  const showWavePill = !!latestMoment && latestMoment.id !== waveSeen && waveNow - (latestMoment.matchTime + room.lagMs) < WAVE_FRESH_MS;
+  const lastMoment = FEATURES.momentCards && !replay && !isTry ? room.moments.at(-1) : undefined;
+  const cardNow = useNow(!!lastMoment && lastMoment.id !== cardSeen, 5000, room.clockOffset);
+  const cardAt = lastMoment ? reachedAllAt(lastMoment, boardEntries) : Infinity;
+  const cardMoment = lastMoment && lastMoment.id !== cardSeen && cardNow >= cardAt && cardNow - cardAt < CARD_FRESH_MS ? lastMoment : undefined;
+  const showWavePill =
+    !!latestMoment && latestMoment.id !== waveSeen && latestMoment.id !== cardMoment?.id && waveNow - (latestMoment.matchTime + room.lagMs) < WAVE_FRESH_MS;
   const canChat = room.ready && (!replay || synced);
   const others = boardEntries.filter((e) => e.senderId !== session.guestId && !e.senderId.startsWith("bot_")).length;
   const alone = !isTry && !replay && room.ready && others === 0 && (watching ?? 1) <= 1;
@@ -402,7 +428,7 @@ function RoomView({
             aria-label={`${t.room.lagButtonLabel}: ${t.room.lagBadge(lagS)}`}
             className="rounded-full border border-accent/60 bg-accent/10 px-3 py-1.5 text-sm font-semibold text-accent"
           >
-            ⏱ {t.room.lagBadge(lagS)}
+            {couchLag !== undefined ? "🛋️" : "⏱"} {t.room.lagBadge(lagS)}
           </button>
         )}
         <button onClick={() => setMenuOpen(true)} aria-label={t.room.menu} className="rounded-full px-2 py-1 text-xl">
@@ -507,6 +533,7 @@ function RoomView({
           roomCode={session.code}
           onTap={room.syncTap}
           onApply={(ms) => {
+            linkCouch(null);
             setSource("custom");
             room.setLag(ms, "custom");
           }}
@@ -516,6 +543,8 @@ function RoomView({
       {FEATURES.callIt && !replay && (
         <CallCard call={room.call} board={room.callBoard} myId={session.guestId} onPick={room.pickCall} onAnswer={room.answerCall} />
       )}
+
+      {cardMoment && <MomentCard moment={cardMoment} members={boardEntries} roomName={roomName} code={session.code} onClose={() => setCardSeen(cardMoment.id)} />}
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col lg:col-start-2 lg:row-span-2 lg:row-start-1">
@@ -543,6 +572,7 @@ function RoomView({
         <CalibrationCard
           s={lagHint}
           onApply={() => {
+            linkCouch(null);
             setSource("crowd");
             room.setLag(lagHint.lag, "crowd");
             track("autosync_applied", session.code, { deltaS: Math.round(lagHint.delta / 1000), drift: lagHint.drift });
@@ -575,7 +605,32 @@ function RoomView({
       </div>
 
       <div className="contents lg:col-start-2 lg:row-start-3 lg:block">
-      <Composer disabled={!canChat} onSend={room.sendText} chips={QUICK_CHIPS[sport]}>
+      <Composer
+        disabled={!canChat}
+        onSend={room.sendText}
+        chips={chipsFor(sport, pack)}
+        chipsLead={
+          FEATURES.regionalChips && (
+            <select
+              aria-label={t.room.chipPack}
+              value={pack ?? ""}
+              onChange={(e) => {
+                const p = asChipPack(e.target.value);
+                setPack(p);
+                saveRoomStr("chips", session.code, p);
+              }}
+              className="shrink-0 rounded-full border border-line bg-surface px-2 py-1.5 text-sm text-muted"
+            >
+              <option value="">{t.room.chipDefault}</option>
+              {Object.entries(CHIP_PACKS).map(([id, p]) => (
+                <option key={id} value={id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          )
+        }
+      >
         <RoarButton disabled={!canChat} onStart={() => !soundOn && !muted && unlockSound()} onRoar={(i, d) => room.sendRoar(i, d).catch(() => undefined)} />
       </Composer>
       </div>
@@ -593,10 +648,16 @@ function RoomView({
         onClose={() => (setLagOpen(false), setLagDone(true))}
         lagMs={room.lagMs}
         source={source}
+        couch={
+          FEATURES.couchMode && !replay && !isTry
+            ? { members: boardEntries.filter((e) => e.senderId !== session.guestId && !e.senderId.startsWith("bot_")), linked: couchWith, onLink: linkCouch }
+            : undefined
+        }
         onPause={
           replay || isTry || pausedFrom
             ? undefined
             : () => {
+                linkCouch(null);
                 setPausedFrom({ at: Date.now(), lag: room.lagMs, source });
                 room.pause();
                 track("paused", session.code);
@@ -604,6 +665,7 @@ function RoomView({
               }
         }
         onChange={(ms, src) => {
+          linkCouch(null);
           setSource(src);
           room.setLag(ms, src);
         }}

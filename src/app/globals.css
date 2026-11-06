@@ -124,6 +124,14 @@ dialog::backdrop {
   animation: wave-light 0.6s ease-out both;
 }
 
+/* Touch screens: every button is at least 44 × 44 px. */
+@media (pointer: coarse) {
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

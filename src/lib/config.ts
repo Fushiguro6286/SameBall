@@ -21,7 +21,38 @@ export const QUICK_CHIPS: Record<Sport, readonly string[]> = {
   esports: ["GG!", "Clutch!! 🔥", "ACE!", "What a play!", "Throw?", "Comeback?"],
   other: ["WOW!! 🔥", "No way!", "Let's go!!", "Unreal 😱", "So close!"],
 };
-export const ALL_CHIPS: ReadonlySet<string> = new Set(Object.values(QUICK_CHIPS).flat());
+/** Regional quick-chip packs (native script + transliteration), picked per room. The UI itself stays English/Hindi. */
+export const CHIP_PACKS = {
+  ta: {
+    label: "தமிழ்",
+    cricket: ["சிக்ஸர்! 🔥 (Sixer!)", "அவுட்!! ☝️ (Out!)", "ஃபோர்! 💥 (Four!)", "என்ன ஷாட்! (Enna shot!)", "சூப்பர் கேட்ச்! (Super catch!)", "செம்ம! (Semma!)"],
+    other: ["செம்ம! (Semma!)", "வேற லெவல்! (Vera level!)", "அய்யோ! (Ayyo!)"],
+  },
+  te: {
+    label: "తెలుగు",
+    cricket: ["సిక్సర్! 🔥 (Sixer!)", "అవుట్!! ☝️ (Out!)", "ఫోర్! 💥 (Four!)", "ఏం షాట్! (Em shot!)", "సూపర్ క్యాచ్! (Super catch!)", "అదిరింది! (Adirindi!)"],
+    other: ["అదిరింది! (Adirindi!)", "సూపర్! (Super!)", "అయ్యో! (Ayyo!)"],
+  },
+  bn: {
+    label: "বাংলা",
+    cricket: ["ছক্কা! 🔥 (Chhokka!)", "আউট!! ☝️ (Out!)", "চার! 💥 (Char!)", "কী শট! (Ki shot!)", "দারুণ ক্যাচ! (Darun catch!)", "দারুণ! (Darun!)"],
+    other: ["দারুণ! (Darun!)", "অসাধারণ! (Oshadharon!)", "ইশ! (Ish!)"],
+  },
+  kn: {
+    label: "ಕನ್ನಡ",
+    cricket: ["ಸಿಕ್ಸರ್! 🔥 (Sixer!)", "ಔಟ್!! ☝️ (Out!)", "ಫೋರ್! 💥 (Four!)", "ಏನ್ ಶಾಟ್! (En shot!)", "ಸೂಪರ್ ಕ್ಯಾಚ್! (Super catch!)", "ಸಖತ್! (Sakkath!)"],
+    other: ["ಸಖತ್! (Sakkath!)", "ಸೂಪರ್! (Super!)", "ಅಯ್ಯೋ! (Ayyo!)"],
+  },
+} as const;
+export type ChipPack = keyof typeof CHIP_PACKS;
+export const asChipPack = (s: unknown): ChipPack | null => (typeof s === "string" && s in CHIP_PACKS ? (s as ChipPack) : null);
+export const chipsFor = (sport: Sport, pack: ChipPack | null): readonly string[] =>
+  pack ? CHIP_PACKS[pack][sport === "cricket" ? "cricket" : "other"] : QUICK_CHIPS[sport];
+
+export const ALL_CHIPS: ReadonlySet<string> = new Set([
+  ...Object.values(QUICK_CHIPS).flat(),
+  ...Object.values(CHIP_PACKS).flatMap((p) => [...p.cricket, ...p.other]),
+]);
 export const asSport = (s: string | null | undefined): Sport => (SPORTS as readonly string[]).includes(s ?? "") ? (s as Sport) : "other";
 
 export const AVATARS =["🦁", "🐯", "🦊", "🐼", "🐸", "🦉", "🐙", "🦄", "🐝", "🔥", "⚡", "🎯", "🏏", "⚽", "🏎️", "🎮"] as const;
@@ -56,6 +87,9 @@ export const FEATURES = {
   stadiums: process.env.NEXT_PUBLIC_FEATURE_STADIUMS === "1",
   hindi: process.env.NEXT_PUBLIC_FEATURE_HINDI === "1",
   callIt: process.env.NEXT_PUBLIC_FEATURE_CALL_IT === "1",
+  regionalChips: process.env.NEXT_PUBLIC_FEATURE_REGIONAL_CHIPS === "1",
+  couchMode: process.env.NEXT_PUBLIC_FEATURE_COUCH_MODE === "1",
+  momentCards: process.env.NEXT_PUBLIC_FEATURE_MOMENT_CARDS === "1",
 };
 
 /** Anchor the room creator posts to end the match (each viewer's recap opens when it reaches their screen). */

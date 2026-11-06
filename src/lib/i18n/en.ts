@@ -55,6 +55,9 @@ export const en = {
   room: {
     lagBadge: (s: number) => (s === 0 ? "Live" : `+${s}s`),
     lagButtonLabel: "Set your feed delay",
+    chipPack: "Quick-chip language",
+    chipDefault: "🗣️ Chips",
+    unlocked: (who: string, text: string) => `Unlocked, from ${who}: ${text}`,
     menu: "Room menu",
     revealAll: "Reveal all",
     revealAllConfirm: "Show every locked message now? You may get spoiled.",
@@ -176,6 +179,14 @@ export const en = {
     storySpread: (s: number) => `${s} SECONDS`,
     storySub: "from the first screen to the last",
     dismiss: "Dismiss",
+  },
+
+  moment: {
+    kicker: "MOMENT CARD",
+    title: (n: number) => `🃏 That moment has reached all ${n} screens. Here's how the squad saw it:`,
+    roar: "📣 Roar",
+    share: "Share moment card",
+    shareText: (room: string) => `How ${room} saw it on SameBall: every reaction waited for each screen.`,
   },
 
   catchup: {
@@ -324,6 +335,8 @@ export const en = {
   },
 
   lag: {
+    couch: "Same screen as…",
+    couchOn: (who: string) => `Watching on ${who}'s screen. Your delay follows theirs; change it yourself to unlink.`,
     title: "How are you watching?",
     subtitle: "Pick your feed. We hold messages until the moment reaches your screen.",
     sources: {

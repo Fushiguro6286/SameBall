@@ -20,6 +20,8 @@ export interface Who {
 
 export interface Reactor extends Who {
   firstSent: number;
+  /** Their first reaction's text (null for a roar). */
+  text: string | null;
 }
 
 export interface Moment {
@@ -47,7 +49,7 @@ export function findMoments(revealed: ChatMsg[]): Moment[] {
       for (const m of win) {
         const prev = reactors.get(m.senderId);
         if (!prev || m.sentTime < prev.firstSent)
-          reactors.set(m.senderId, { senderId: m.senderId, name: m.senderName, avatar: m.avatar, lag: m.lag ?? 0, firstSent: m.sentTime });
+          reactors.set(m.senderId, { senderId: m.senderId, name: m.senderName, avatar: m.avatar, lag: m.lag ?? 0, firstSent: m.sentTime, text: m.kind === "text" ? (m.text ?? null) : null });
       }
       if (sum >= MOMENT_MIN_WEIGHT && reactors.size >= 2) {
         out.push({ id: msgs[i].id, matchTime: start, reactors: [...reactors.values()] });
@@ -58,6 +60,9 @@ export function findMoments(revealed: ChatMsg[]): Moment[] {
   }
   return out;
 }
+
+/** Server time when the moment has reached every known screen (members and reactors): the slowest lag. */
+export const reachedAllAt = (m: Moment, members: Who[]) => m.matchTime + Math.max(0, ...members.map((w) => w.lag), ...m.reactors.map((r) => r.lag));
 
 export interface Wave {
   /** Fastest feed first. `offset` = ms after the fastest screen. */

@@ -62,20 +62,9 @@ export function WaveSheet({
     setBusy(true);
     setNote("");
     try {
-      const blob = await drawStory(t, wave, roomName);
-      const file = new File([blob], "sameball-wave.png", { type: "image/png" });
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], text: captionLines(t, wave).join(" ") });
-        track("wave_shared", code, { via: "share" });
-      } else {
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = file.name;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-        setNote(t.wave.downloaded);
-        track("wave_shared", code, { via: "download" });
-      }
+      const via = await shareImage(await drawStory(t, wave, roomName), "sameball-wave.png", captionLines(t, wave).join(" "));
+      if (via === "download") setNote(t.wave.downloaded);
+      track("wave_shared", code, { via });
     } catch (e) {
       if ((e as Error)?.name !== "AbortError") setNote(t.errors.generic);
     } finally {
@@ -150,8 +139,26 @@ export function WaveSheet({
   );
 }
 
-/** 1080×1920 story image. Names, avatars and timings only: no message content, no logos. */
-async function drawStory(t: Dict, w: Wave, roomName: string): Promise<Blob> {
+/** Web Share with the image where supported, else a download. */
+export async function shareImage(blob: Blob, name: string, text: string): Promise<"share" | "download"> {
+  const file = new File([blob], name, { type: "image/png" });
+  if (navigator.canShare?.({ files: [file] })) {
+    await navigator.share({ files: [file], text });
+    return "share";
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = file.name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  return "download";
+}
+
+/**
+ * 1080×1920 story image: names, avatars and timings, no logos. Message content only as a moment card's `quotes`
+ * (each member's first short reaction), which exist only once the moment reached every screen in the room.
+ */
+export async function drawStory(t: Dict, w: Wave, roomName: string, quotes?: ReadonlyMap<string, string>): Promise<Blob> {
   const W = 1080;
   const H = 1920;
   const c = document.createElement("canvas");
@@ -192,7 +199,7 @@ async function drawStory(t: Dict, w: Wave, roomName: string): Promise<Blob> {
     ctx.fillText(fit(s, maxW), x, y);
   };
 
-  text(t.wave.storyKicker, 90, 220, `72px ${display}`, accent);
+  text(quotes ? t.moment.kicker : t.wave.storyKicker, 90, 220, `72px ${display}`, accent);
   text(roomName, 90, 290, `44px ${sans}`, muted);
   text(t.wave.storySpread(secs(w.spreadMs)), 90, 540, `230px ${display}`, fg);
   text(t.wave.storySub, 90, 610, `46px ${sans}`, muted);
@@ -207,15 +214,18 @@ async function drawStory(t: Dict, w: Wave, roomName: string): Promise<Blob> {
     const y = top + k * rowH + rowH / 2;
     text(d.avatar, 90, y + 22, `64px ${sans}`, fg);
     text(d.name, 190, y + 16, `44px ${sans}`, fg, "left", barX - 230);
-    ctx.fillStyle = surface;
-    ctx.beginPath();
-    ctx.roundRect(barX, y - 10, barW, 20, 10);
-    ctx.fill();
-    const frac = w.spreadMs ? d.offset / w.spreadMs : 0;
-    ctx.fillStyle = accent;
-    ctx.beginPath();
-    ctx.roundRect(barX, y - 10, Math.max(20, frac * barW), 20, 10);
-    ctx.fill();
+    if (quotes) text(quotes.get(d.senderId) ?? "", barX, y + 16, `44px ${sans}`, fg, "left", barW);
+    else {
+      ctx.fillStyle = surface;
+      ctx.beginPath();
+      ctx.roundRect(barX, y - 10, barW, 20, 10);
+      ctx.fill();
+      const frac = w.spreadMs ? d.offset / w.spreadMs : 0;
+      ctx.fillStyle = accent;
+      ctx.beginPath();
+      ctx.roundRect(barX, y - 10, Math.max(20, frac * barW), 20, 10);
+      ctx.fill();
+    }
     text(t.wave.offset(secs(d.offset)), W - 90, y + 16, `44px ${sans}`, k === 0 ? accent : muted, "right", 160);
   });
 

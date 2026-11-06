@@ -58,6 +58,9 @@ export const hi: Dict = {
   room: {
     lagBadge: (s: number) => (s === 0 ? "लाइव" : `+${s}s`),
     lagButtonLabel: "अपनी फ़ीड की देरी सेट करें",
+    chipPack: "क्विक-चिप की भाषा",
+    chipDefault: "🗣️ चिप्स",
+    unlocked: (who: string, text: string) => `खुला, ${who} का मैसेज: ${text}`,
     menu: "रूम मेन्यू",
     revealAll: "सब दिखाएँ",
     revealAllConfirm: "सारे लॉक मैसेज अभी दिखाएँ? स्पॉइलर मिल सकता है।",
@@ -179,6 +182,14 @@ export const hi: Dict = {
     storySpread: (s: number) => `${s} सेकंड`,
     storySub: "पहली स्क्रीन से आख़िरी तक",
     dismiss: "हटाएँ",
+  },
+
+  moment: {
+    kicker: "मोमेंट कार्ड",
+    title: (n: number) => `🃏 यह पल सभी ${n} स्क्रीनों तक पहुँच गया। टोली ने इसे ऐसे देखा:`,
+    roar: "📣 दहाड़",
+    share: "मोमेंट कार्ड शेयर करें",
+    shareText: (room: string) => `${room} ने SameBall पर इसे ऐसे देखा: हर रिएक्शन ने हर स्क्रीन का इंतज़ार किया।`,
   },
 
   catchup: {
@@ -327,6 +338,8 @@ export const hi: Dict = {
   },
 
   lag: {
+    couch: "इनकी स्क्रीन पर देख रहे हैं…",
+    couchOn: (who: string) => `आप ${who} की स्क्रीन पर देख रहे हैं। आपकी देरी उनकी देरी के साथ बदलेगी; खुद बदलें तो लिंक हट जाएगा।`,
     title: "आप कैसे देख रहे हैं?",
     subtitle: "अपनी फ़ीड चुनें। पल आपकी स्क्रीन पर आने तक हम मैसेज रोककर रखते हैं।",
     sources: {

@@ -15,9 +15,10 @@ export function ChatTimeline({
 }: {
   items: ViewItem[];
   clockOffset?: number;
-  announce: string;
+  announce: { name: string; text: string } | null;
   onSpoil: (id: string) => void;
 }) {
+  const t = useT();
   const anyLocked = items.some((i) => i.locked);
   const now = useNow(anyLocked, 1000, clockOffset);
   const scroller = useRef<HTMLDivElement>(null);
@@ -64,7 +65,7 @@ export function ChatTimeline({
       </ol>
       {/* Screen readers hear revealed messages only. */}
       <div aria-live="polite" className="sr-only">
-        {announce}
+        {announce && t.room.unlocked(announce.name, announce.text)}
       </div>
     </div>
   );

@@ -22,9 +22,9 @@ export const AUTOSYNC_MAX_SPREAD_MS = 8000;
 
 /** Reaction types. Only the same type can be the same moment ("SIX!" never pairs with "OUT!"). */
 const KEYS: [string, RegExp][] = [
-  ["six", /\bsix(?:er)?\b|छक्का/i],
-  ["four", /\bfour\b|चौका/i],
-  ["out", /\bout\b|\bwicket\b|\bhowzat\b|\bbowled\b|आउट|विकेट/i],
+  ["six", /\bsix(?:er)?\b|\bchhokka\b|छक्का|சிக்ஸ|సిక్స|ছক্কা|ಸಿಕ್ಸ/i],
+  ["four", /\bfour\b|चौका|ஃபோர்|ఫోర్|চার|ಫೋರ್/i],
+  ["out", /\bout\b|\bwicket\b|\bhowzat\b|\bbowled\b|आउट|विकेट|அவுட்|అవుట్|আউট|ಔಟ್/i],
   ["catch", /\bcatch\b/i],
   ["goal", /\bgoal+\b|गोल/i],
   ["save", /\bsave\b/i],

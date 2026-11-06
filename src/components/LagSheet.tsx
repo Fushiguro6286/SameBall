@@ -2,6 +2,7 @@
 
 import { LAG_SOURCES, NUDGE_LATE_S, NUDGE_SPOILED_S, SLIDER_MAX_S } from "@/lib/config";
 import { useT } from "@/lib/i18n/client";
+import { Avatar } from "./Avatar";
 import { Sheet } from "./Sheet";
 
 export function LagSheet({
@@ -11,6 +12,7 @@ export function LagSheet({
   source,
   onChange,
   onPause,
+  couch,
 }: {
   open: boolean;
   onClose: () => void;
@@ -19,6 +21,8 @@ export function LagSheet({
   onChange: (ms: number, source: string) => void;
   /** "I paused my stream": the chat waits until I'm back. */
   onPause?: () => void;
+  /** Couch mode: share a friend's feed and follow their adjustments. */
+  couch?: { members: { senderId: string; name: string; avatar: string }[]; linked: string | null; onLink: (id: string | null) => void };
 }) {
   const t = useT();
   const secs = Math.round(lagMs / 1000);
@@ -27,6 +31,26 @@ export function LagSheet({
   return (
     <Sheet open={open} onClose={onClose} title={t.lag.title}>
       <p className="mt-1 text-sm text-muted">{t.lag.subtitle}</p>
+
+      {couch && couch.members.length > 0 && (
+        <div role="group" aria-label={t.lag.couch} className="mt-4">
+          <p className="text-sm font-semibold">🛋️ {t.lag.couch}</p>
+          <div className="no-scrollbar mt-2 flex gap-2 overflow-x-auto">
+            {couch.members.map((m) => (
+              <button
+                key={m.senderId}
+                aria-pressed={couch.linked === m.senderId}
+                onClick={() => couch.onLink(couch.linked === m.senderId ? null : m.senderId)}
+                className="flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface-2 py-1 pl-1 pr-3 text-sm aria-pressed:border-accent aria-pressed:bg-accent/15"
+              >
+                <Avatar emoji={m.avatar} size="sm" />
+                {m.name}
+              </button>
+            ))}
+          </div>
+          {couch.linked && <p className="mt-1 text-xs text-muted">{t.lag.couchOn(couch.members.find((m) => m.senderId === couch.linked)?.name ?? "")}</p>}
+        </div>
+      )}
 
       <div role="group" aria-label={t.lag.title} className="mt-4 grid grid-cols-3 gap-2">
         {LAG_SOURCES.map((src) => (
