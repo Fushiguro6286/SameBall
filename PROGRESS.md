@@ -107,10 +107,24 @@ Judge Mode API (create, join, start idempotent, steps once/early 425/non-member 
 - `README.md` (problem, features, Feature → Nexconn table, Mermaid architecture, setup, how judges test, prior-work statement), `docs/WRITEUP.md` (for the PDF), `docs/DEMO_SCRIPT.md` (2-minute video).
 - The write-up has `<...>` placeholders for things that must be real: App Key, demo video link, `/stats` numbers and screenshots, user quotes, the Judges' room code and its anchor.
 
+### Judges' review build: Phase 3 (P2, all behind flags), Nov 7
+- **Accessibility:** aria-live says "Unlocked, from Arjun: …" only at reveal; 44 px targets on touch screens; placeholder contrast fixed; reduced motion was already global.
+- **Regional chip packs** (Tamil, Telugu, Bengali, Kannada; native script + transliteration), chosen per room; auto-sync recognises the native six/four/out words.
+- **Couch mode:** "Same screen as…" in the feed sheet follows a friend's delay; any manual change unlinks.
+- **Moment cards:** when a moment has reached every member's screen, reactions in seen order with quotes, shareable image.
+- **Voice notes:** `RC:HQVCMsg`, hold or tap-tap, max 15 s, locked like text, auto-play at reveal; uploaded to Nexconn storage.
+- **Creator rooms:** HOST tag, pin, slow mode (client), quiet the fans (Nexconn freeze list), remove for everyone (`/v4/message/delete`), profanity filter en/hi/Hinglish, host-only Call it.
+- **Series league:** Call it points across a series from history, crown, champion; the room creator starts a new series.
+- **Live score strip:** `SB:Score` from the host bot, held per screen; `ScoreProvider` with a demo provider; admin page can post a score or auto-post the demo score every 30 s.
+- **Gated Huddle:** 5-second gate + sheet (who's out of step, "Fix my delay"). No voice yet.
+- **Skipped:** spoiler-safe Web Push (needs VAPID keys, a service worker and server scheduling); the real cricket feed (CricketData.org's docs don't list response fields); Huddle voice (Nexconn Call needs a card, waiting for your OK); stretch items.
+- Tested: 91 unit tests, typecheck, lint. Browser (dev, real Nexconn creator room YY5YJN, test users): host hold + HOST tag, pin, slow mode, profanity block, recall on both screens, quiet (fan send rejected 22408), voice note upload + playback, series reset, score strip held 25 s on the fan's screen, Huddle sheet. Demo transport: couch, Tamil chips, moment card + image, aria-live.
+
 ## Next
 - You: fill the write-up placeholders, record the Judges' room on a real match night (Ghost Crowd flag on), record the demo video, export `docs/WRITEUP.md` to PDF.
 - Done: all P2 flags and Call it are on in Vercel (production + preview).
-- Open: Break-time Huddle (needs a card for Call SDK minutes; waiting for your OK).
+- Open: Huddle voice (Nexconn Call needs a card; waiting for your OK). The gate and screen ship.
+- Open: Web Push, a real cricket score feed, a README GIF.
 - Open from the engineering rules: `scripts/load-test.ts` (50 test users) isn't built. Mind the dev-app cap of 100 registered users (error 2007) before running it.
 
 ## Console settings to switch on (you)

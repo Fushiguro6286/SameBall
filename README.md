@@ -27,6 +27,15 @@ Each person sets how far behind their feed is (pick TV / DTH / streaming / radio
 - **Squad recap.** When the room creator ends the match, each friend's recap opens as the end reaches their screen: spoilers held, loudest roar, best Call it streak, biggest gap, a story image and a "join this squad" link.
 - **"What did I miss?"** An AI summary built only from messages already revealed on your screen.
 - **Big public stadiums.** Featured match rooms for up to 10,000 fans, split into North / South / East stands.
+- **Live score strip.** The score arrives as a message from the host bot, so each screen gets it at its own delay and the scoreboard never runs ahead of the TV. A demo score provider ships; admins can also type the score.
+- **Voice notes.** Hold 🎙️ (or tap, tap) for up to 15 s. The note stays locked like text and auto-plays when the moment reaches the listener.
+- **Moment cards.** When a big moment has reached every screen, a card shows the squad's reactions in the order each person saw it, shareable as an image.
+- **Creator rooms.** A host commentates for fans: HOST tag, pinned message, slow mode, "quiet the fans" (enforced by Nexconn), remove for everyone, a profanity filter for English, Hindi and Hinglish, and only the host's Call it polls.
+- **Series league.** Call it points across a whole series in one room, with a crown for the leader. When the room creator starts a new series, points reset and the last leader becomes champion.
+- **Couch mode.** "Same screen as Arjun": follow a friend's delay when you watch the same TV.
+- **Gated Huddle.** Opens only when every screen in the squad is within 5 seconds of the same moment. Voice itself waits on Nexconn Call; the gate and screen ship today.
+- **Regional chip packs.** Quick reactions in Tamil, Telugu, Bengali and Kannada (native script plus transliteration), chosen per room. Auto-sync understands them too.
+- **Accessibility.** Screen readers announce messages only as they unlock, reduced motion is respected, tap targets are 44 px on touch screens, and everything works from the keyboard.
 - **Hindi UI.** A one-tap हिंदी / English switch.
 - **How it works page** (`/how-it-works`): the problem, the hold, a flow diagram and a Feature → Nexconn table. A "Built on Nexconn Chat SDK" badge links to it from the home page, the room menu and the demo end card.
 - **Safety and privacy.** Report, block, creator mute/remove, profanity filter, guest accounts with no email or phone, and a "Delete my data" button.
@@ -38,10 +47,11 @@ Each person sets how far behind their feed is (pick TV / DTH / streaming / radio
 | Rooms | **Group channels** (`/v4/group-channel/create`, `/join`), up to 300 members; overflow into a second "Stand B" room |
 | Guest sign-in | **Server API** `/v4/auth/access-token/issue` mints a chat token per guest; **Web Chat SDK** `NCEngine.connect` |
 | Spoiler-free chat | **Text messages** (`RC:TxtMsg`) with an `extra` field carrying the sender's lag, name and avatar; timing runs on the message's server `sentTime` |
-| Roars, lag, sync check, schedule anchors, Call it | **Custom message types** registered with `registerCustomMessages`: `SB:Roar`, `SB:Lag`, `SB:SyncCheck`, `SB:SyncTap`, `SB:Anchor`, `SB:Call`, `SB:CallVote`, `SB:CallResult` |
+| Roars, lag, sync check, schedule anchors, Call it, creator controls, live score | **Custom message types** registered with `registerCustomMessages`: `SB:Roar`, `SB:Lag`, `SB:SyncCheck`, `SB:SyncTap`, `SB:Anchor`, `SB:Call`, `SB:CallVote`, `SB:CallResult`, `SB:Host`, `SB:Score` |
+| Voice notes | **HD voice messages** (`RC:HQVCMsg`) sent with `sendMediaMessage`; the file goes to Nexconn storage, the delay rides in `extra` |
 | Late joiners, Ghost Crowd replay, catch-up | **Message history** (`BaseChannel.createMessagesQuery`); Ghost Crowd relies on Nexconn's 180-day group history |
 | Judge Mode bots, anchors | **Server API** `/v4/group-channel/message/send` sends text and custom messages as bot users with the same metadata as real clients |
-| Moderation | **Server API** `/v4/group-channel/user/mute-list/add` and `/v4/group-channel/leave` |
+| Moderation | **Server API** `/v4/group-channel/user/mute-list/add`, `/v4/group-channel/leave`, `/v4/message/delete` (remove for everyone), `/v4/group-channel/freeze-list/add` + `allowed-sender-list/add` (quiet the fans) |
 | Big public stadiums | **Community channels** (`/v4/community-channel/create`, `/join`, `/message/send`) with public **sub-channels** as stands; the SDK's `CommunitySubChannel` for sending and history |
 | Reconnect banner | **Connection status handler** (`ConnectionStatusHandler`) |
 | Live stats | **Webhooks** (message send events) counted on our server, signature-checked and deduplicated |
@@ -90,7 +100,7 @@ npm run dev
 | `DATABASE_URL` | Neon pooled connection string |
 | `ADMIN_TOKEN` | Protects `/admin` (feature rooms, post anchors, create stadiums) and `GET /api/admin/export` (daily usage CSV) |
 | `AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`, `AI_FALLBACK_MODEL` | Optional. Any OpenAI-compatible provider for "What did I miss?" (or `GEMINI_API_KEY`) |
-| `NEXT_PUBLIC_FEATURE_*` | Set to `1` to turn on: `GHOST_CROWD`, `WAVE`, `AUTO_CALIBRATION`, `AI_CATCHUP`, `STADIUMS`, `HINDI`, `CALL_IT` |
+| `NEXT_PUBLIC_FEATURE_*` | Set to `1` to turn on: `GHOST_CROWD`, `WAVE`, `AUTO_CALIBRATION`, `AI_CATCHUP`, `STADIUMS`, `HINDI`, `CALL_IT`, `REGIONAL_CHIPS`, `COUCH_MODE`, `MOMENT_CARDS`, `VOICE_NOTES`, `CREATOR_ROOMS`, `SERIES_LEAGUE`, `SCORE_STRIP`, `HUDDLE` (all listed in `src/lib/config.ts`) |
 
 Without Nexconn credentials you can still try the timing locally: open `/r/ANY?demo=1&lag=20` in two tabs (dev builds only; it uses a local BroadcastChannel, not Nexconn).
 
@@ -106,4 +116,6 @@ Checks: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`. CI run
 
 ## Prior work
 
-Everything was built during the challenge, Nov 2026.
+**Before Oct 23, 2026:** nothing. No code, design or assets existed.
+
+**During the challenge:** everything in this repo. The first commit (`Initial commit from Create Next App`) is dated Nov 6, 2026, and `git log` shows every step since. Third-party code is limited to the npm dependencies in `package.json` (Next.js, React, the Nexconn Chat SDK, Drizzle, zod and friends).

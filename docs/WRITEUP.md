@@ -28,6 +28,8 @@ The same match reaches people at different times:
 - streaming apps: 20 to 40 seconds behind
 - radio: different again
 
+In SameBall's own rooms the median gap between the fastest and the slowest screen in a room is `<N> s` (measured from the delay every message carries; see `/stats`, "Median lag spread per room").
+
 Chat apps deliver every message as fast as possible, so the fastest feed sets the pace and everyone else gets spoiled. Speed is the bug.
 
 ## The solution
@@ -51,22 +53,33 @@ On top of that core:
 - **Ghost Crowd replay:** watching the recording tomorrow? Sync to a moment and the room's chat and roars replay with your video.
 - **"What did I miss?":** an AI summary of what your friends said, built only from messages already revealed on your screen.
 - **Big public stadiums:** featured match rooms for up to 10,000 fans, split into stands.
+- **Live score strip:** the score reaches each screen at that screen's delay, so the scoreboard never runs ahead of the TV.
+- **Voice notes:** hold 🎙️ for up to 15 s; the note stays locked like text and plays when the moment reaches the listener.
+- **Moment cards:** when a big moment has reached every screen, the squad's reactions in the order each person saw it, as a shareable card.
+- **Creator rooms:** a host commentates for fans, with pinned messages, slow mode, "quiet the fans", remove for everyone, and only the host's predictions.
+- **Series league:** Call it points across a whole series, a crown for the leader and a champion when a new series starts.
+- **Couch mode:** "Same screen as Arjun" follows a friend's delay when you watch the same TV.
+- **Gated Huddle:** opens only when every screen in the squad is within 5 seconds of the same moment.
+- **Regional chips:** quick reactions in Tamil, Telugu, Bengali and Kannada (native script plus transliteration).
 - **Hindi UI**, guest sign-in with no email or phone, report/block/mute, and a "Delete my data" button.
 
 ## Nexconn features used
 
-| Feature | Nexconn |
-|---|---|
-| Match rooms | Group channels (create, join, leave), Web Chat SDK |
-| Guest sign-in | Server API access tokens; SDK connect |
-| Spoiler-free text | Text messages with an `extra` field carrying the sender's delay |
-| Roars, delay announcements, Sync Check, schedule markers, Call it | Eight registered custom message types |
-| Late joiners, replay, catch-up | Message history (Ghost Crowd uses the 180-day group history) |
-| Judge Mode bot friends, match markers | Server API messages sent as bot users |
-| Moderation | Server API mute list and member removal |
-| Big public stadiums | Community channels with public sub-channels as stands (10,000 members) |
-| Reconnect banner | Connection status events |
-| Live stats | Message webhooks, signature-checked and counted on our server |
+| Feature | Nexconn API | Why |
+|---|---|---|
+| Match rooms, creator rooms | Group channels: Server API `/v4/group-channel/create`, `/join`, `/leave`; Web Chat SDK `GroupChannel` | Membership, moderation and 180-day history, which Ghost Crowd replays need |
+| Guest sign-in | Server API `/v4/auth/access-token/issue`; SDK `NCEngine.connect` | No email or phone; one token per guest, minted server-side |
+| Spoiler-free text | `RC:TxtMsg` with `extra` = sender's delay, name, avatar | Timing runs on Nexconn's server `sentTime`, so no client clock is trusted |
+| Roars, delay stamps, Sync Check, match markers, Call it, host controls, live score | Custom message types (`registerCustomMessages`): `SB:Roar`, `SB:Lag`, `SB:SyncCheck`, `SB:SyncTap`, `SB:Anchor`, `SB:Call`, `SB:CallVote`, `SB:CallResult`, `SB:Host`, `SB:Score` | Structured events that persist in history and get the same per-screen hold as chat |
+| Voice notes | HD voice messages (`RC:HQVCMsg`) via `sendMediaMessage`; Nexconn file storage | Upload and playback without our own storage; the `extra` delay stamp makes them lock like text |
+| Late joiners, replay, catch-up, series league | Message history (`createMessagesQuery`) | Anything still ahead of the reader comes back locked; league points are rebuilt from history, nothing extra stored |
+| Judge Mode bots, match markers, score updates | Server API `/v4/group-channel/message/send` as bot users | Bots send exactly what real clients send, so the same code holds them |
+| Creator moderation | Server API mute list, `/v4/message/delete` (recall), `/v4/group-channel/freeze-list/add` + `allowed-sender-list/add` ("quiet the fans") | Enforced by Nexconn, not just hidden in our UI (a frozen fan's send is rejected with 22408) |
+| Big public stadiums | Community channels (`/v4/community-channel/create`, `/join`, `/message/send`) with public sub-channels as stands | 10,000 members, split so each stand's chat stays readable |
+| Reconnect banner | `ConnectionStatusHandler` | Honest "reconnecting" state; history refills the gap |
+| Live stats | Message webhooks, signature-checked | Counts real messages server-side without relaying chat |
+
+Not available in Nexconn, so built in SameBall: slow mode (enforced in the client; no Nexconn slow-mode API), spoiler-safe push (not built yet), voice huddle (needs Nexconn Call; the 5-second gate and screen ship today).
 
 Nexconn carries every chat message. SameBall's server never relays chat; it issues tokens, runs the bots and moderation, and counts webhook events.
 
@@ -107,11 +120,11 @@ As of `<DATE>` (from our public `/stats` page, which excludes test and bot accou
 
 ## Roadmap
 
-1. **Automatic delay detection.** Sync Check and crowd calibration already find delays from people; next is listening for the broadcast audio to detect the delay with no taps.
-2. **Break-time Huddle.** A voice huddle during innings breaks and time-outs, using Nexconn calls.
-3. **Score-aware moments.** Pull ball-by-ball data so The Wave and catch-up can name the moment (only once it's revealed for the viewer).
-4. **More languages:** Tamil, Telugu, Bengali, Kannada, Marathi.
-5. **SameBall Sync SDK** for partners, starting with one streaming or fantasy partner.
+1. **Huddle voice on Nexconn Call.** The 5-second gate ships today; the call itself waits on enabling Nexconn Call.
+2. **A real ball-by-ball feed** behind the existing `ScoreProvider` interface (only the demo provider ships today).
+3. **Spoiler-safe push:** a notification at the reader's own reveal time, with a content-free preview, opt-in and per-room mute.
+4. **Automatic delay detection** from the broadcast audio, with no taps.
+5. **More languages** (Marathi, Malayalam, Gujarati) and the SameBall Sync SDK for one streaming or fantasy partner.
 
 ## How to test without a live match
 

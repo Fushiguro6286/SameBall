@@ -103,12 +103,26 @@ Anything that changes on screen because of a message can leak it early. Decision
 | Screen readers | `aria-live` announces revealed messages only. |
 | OG / share images | Never include messages. |
 | Vibration | Hype vibration says "something is coming", same as the strip. |
+| Voice notes | A locked voice note renders no `<audio>` element and no URL; the player appears only once unlocked. Auto-play happens at reveal. |
+| Moment cards | Built from reactions already revealed for me; shown only once the moment has reached every member's screen. Quotes come from revealed messages. |
+| Pinned message (creator rooms) | The pin bar shows a message only once it's unlocked for me. |
+| Host controls (`SB:Host`) | Pin, slow mode, hide and quiet are control messages with no match content, so they apply at once. |
+| Live score strip (`SB:Score`) | Sent by the host bot with a delay stamp, so it's held like any message; the strip shows only the latest revealed line. Only bot senders count. |
+| Couch mode, Huddle | Use delay numbers only, like the Lag Leaderboard. |
+| Series league | Built from Call it results already revealed for me; a series marker counts only once it reaches my screen. |
 
 ## Nexconn design decisions
 - **One `SameBall:Moment` custom type?** Not adopted. Every message already carries the same fields: text uses `RC:TxtMsg` with `extra = {sb, lag, n, a}`, and each structured kind has its own registered `SB:*` type with `lag`. Nexconn gives us `sentTime`, so `revealAt = sentTime − senderLag + readerLag` is computed exactly as the brief describes. Switching would orphan existing history (Ghost Crowd replays read it for 180 days) and gain nothing.
 - **Chatroom KV attributes:** not available, because rooms are group channels (180-day history, membership, moderation). Shared state that needs no history (presence) goes through `/api/presence`; shared match state (anchors, Call it, Sync Check) travels as custom messages, so it persists in history and replays.
 - **History on rejoin:** done since P1 (`createMessagesQuery`); anything still ahead of the reader comes back locked.
-- **Moderation:** creator mute (Server API mute list) and remove (leave) exist. The Web SDK also offers `deleteMessageForAll` (recall) and an `onMessageDeleted` handler; recall and mute-all are planned with creator rooms (Phase 3).
+- **Moderation:** creator mute (Server API mute list) and remove (leave). Phase 3 added:
+  - **Remove for everyone:** Server API `/v4/message/delete` ([docs](https://docs.nexconn.ai/platform-chat-api/message/msgrecall)). The SDK's `deleteMessageForAll` works only for the sender, so the host goes through our server. The client listens to `onMessageDeleted`, and the host also posts an `SB:Host` hide op, because the docs don't say whether server deletes fire that event.
+  - **Quiet the fans:** `/v4/group-channel/freeze-list/add|remove` plus `/v4/group-channel/allowed-sender-list/add` for the host ([docs](https://docs.nexconn.ai/platform-chat-api/group-channel/mute/ban-group)). Nexconn rejects a frozen fan's send (22408).
+  - **Slow mode:** Nexconn has no slow-mode API, so it's enforced in the client.
+  - **Profanity:** a client filter (English, Hindi, Hinglish) masks fan messages in creator rooms and blocks sends; Nexconn's Console profanity filter can be turned on as well.
+- **Creator rooms use group channels, not chatrooms.** Chatrooms keep little history and no membership; group channels keep history (late joiners, Ghost Crowd) and support freeze/mute, which creator rooms need.
+- **Voice notes:** `RC:HQVCMsg` through `sendMediaMessage`, uploaded to Nexconn storage, so no Vercel Blob is needed.
+- **Live score:** the host bot posts `SB:Score` lines with lag 0 (or the admin's feed delay). A `ScoreProvider` interface (`src/lib/score.ts`) has a demo provider; the admin page polls it every 30 s while open. A real cricket feed isn't wired up: CricketData.org's public docs don't list its response fields.
 
 ## Analytics events
 Client events go to `POST /api/metrics`; every row is flagged `is_test` when the user is a test or bot profile (bots never send client events). Names used for the brief's list:
@@ -124,7 +138,7 @@ Client events go to `POST /api/metrics`; every row is flagged `is_test` when the
 | recap_shared | `recap_shared` (`via`: whatsapp / story / copy), `recap_opened` (`from`: room / link) |
 | invite_opened | `invite_opened` (joined through a `?ref=` invite link) |
 | autosync_applied | `autosync_applied` (`deltaS`, `drift`) |
-| — | `paused`, `lag_set`, `survey`, `feedback`, `wave_shared`, `catchup_used`, `replay_started`, `sync_check_done` |
+| — | `paused`, `lag_set`, `survey`, `feedback`, `wave_shared`, `catchup_used`, `replay_started`, `sync_check_done`, `moment_card_shared`, `voice_sent` |
 
 The end-of-match survey (spoiled? would use again? comment) is stored in `feedback` (`spoiled`, `again` columns, migration 0005) and exported with `GET /api/admin/export?type=survey`.
 
@@ -132,5 +146,6 @@ The end-of-match survey (spoiled? would use again? comment) is stored in `feedba
 - **Nexconn dev app cap:** a development-mode app allows 100 registered users (error 2007). Every guest, bot and second window counts. Switch the app to production in the Console before real matches, or traction stops at 100.
 - **Chatroom KV**: not applicable (rooms are groups). Presence stays on `/api/presence`.
 - **Call SDK (Huddle)**: needs a card on file for the free minutes. Waiting for the owner's go-ahead.
-- **Live score data** needs a cricket data API key; only a mock provider can ship without one.
-- **Voice notes** need blob storage (Vercel Blob); **Web Push** needs VAPID keys and a service worker (none today).
+- **Live score data:** only the demo provider ships (see above).
+- **Web Push:** not built (needs VAPID keys, a service worker and server-side scheduling at each reader's reveal time).
+- **New members and old messages:** in a test room a new member didn't see messages sent before they joined. Turn on Group Channels → "Enable pre-join history access by new member" in the Nexconn Console.

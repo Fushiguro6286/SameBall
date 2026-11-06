@@ -1,47 +1,50 @@
-# Demo video script (2 minutes)
+# Demo video script (under 3 minutes)
 
 ## Before recording
 
-- Feature flags on in Vercel (`NEXT_PUBLIC_FEATURE_WAVE=1` at least), redeployed.
-- Two phones, side by side, screen-recorded together (or film both with a third camera). Sound on.
-- Phone A ("Priya"): feed set to **TV** (fastest). Phone B ("Rahul"): feed set to **Streaming app** (+25 s).
-- Both in the same room. Turn on stadium sound on both (tap the 🔊 banner).
-- A match source:
-  - **Real match:** both phones next to a TV and a streaming app showing the same match.
-  - **No match on:** use Judge Mode (`/try`) on a laptop, then "Open a second window on the TV feed" and put the two windows side by side (the second window only works in the same browser). The scripted over has a six and a wicket; the bots supply the reactions.
-- Have https://sameball.vercel.app/stats open in a browser tab.
+- Vercel flags on (they are in production now). Sound on.
+- Two phones side by side, screen-recorded together (or filmed with a third camera).
+  - Phone A "Priya": feed **TV** (fastest). Phone B "Rahul": feed **Streaming app** (+25 s).
+  - Both in the same room, stadium sound on (tap the 🔊 banner).
+- Match source: a real match on a TV and a streaming app. With no match on, use Judge Mode (`/try`) plus "Open a second window on the TV feed", side by side in one browser.
+- Tabs ready: the architecture slide (the Mermaid diagram from `README.md` or `/how-it-works`) and https://sameball.vercel.app/stats.
 
 ## Script
 
-**0:00–0:15 · The problem (two phones, different feeds)**
-Show both phones and their ⏱ badges: "Live" and "+25s".
-> "Priya watches on TV. Rahul streams, 25 seconds behind. In a normal group chat, Priya's 'SIX!' spoils it for Rahul. SameBall delivers every message at the right moment instead."
+**0:00–0:15 · Two screens, one spoiler**
+Show both phones. In an ordinary chat app Priya types "SIX!!" and it pops up on Rahul's phone while his stream still shows the bowler walking back.
+> "Priya's on TV. Rahul streams, 25 seconds behind. Her SIX just spoiled his match. SameBall: the group chat that never spoils the match."
 
-**0:15–0:40 · A message from the future**
-Priya types "SIX!! 🔥". On Rahul's phone it appears as a locked bubble: "Message from Priya, locked · unlocks in 24s".
-> "Rahul sees that Priya said something. Not what. It unlocks when the moment reaches his screen."
+**0:15–1:15 · Locked bubbles, Hype Radar, Call it**
+- Priya sends "SIX!! 🔥" in SameBall. Rahul sees a locked bubble, "Message from Priya · unlocks in 24s". It unlocks the moment the six lands on his screen.
+  > "Rahul knows Priya said something. Not what. It unlocks when the moment reaches him."
+- The squad reacts to a big ball. Close-up on Rahul: the Hype Radar heartbeat pulses, "👀 something's coming in 9s".
+  > "His squad is losing it over something he hasn't seen yet. Suspense, no spoilers."
+- Priya opens ⋯ → 🎯 Call it → "Next ball?". Both pick. Rahul's picks stay open until the ball reaches *his* screen; "You called it!" shows only after it lands for him.
+  > "A prediction game the fast feed can't cheat and the slow feed can't spoil."
 
-**0:40–1:05 · Hype Radar**
-Priya and a friend react to a big ball. Close up on Rahul's phone: the heartbeat strip pulses, "👀 something's coming in 9s", the phone buzzes.
-> "His squad is losing it over something he hasn't seen yet. Suspense, zero spoilers."
+**1:15–1:45 · Auto-sync, What did I miss?, The Wave**
+- Rahul's phone shows "You're 31s behind the fastest screen · Apply". Tap Apply.
+  > "SameBall learns your real delay from your reactions."
+- Tap "What did I miss?": a short AI summary of messages already unlocked for him.
+- Tap the "🌊 rippled through 2 screens" pill: the dots light up in order. Share the story image.
 
-**1:05–1:30 · The wicket lands, two roars**
-The wicket happens on Priya's screen: she holds 📣 to roar, her phone plays the crowd. Seconds later the wicket reaches Rahul's screen: the locked bubbles unlock and his phone roars too.
-> "Same moment, two screens, two roars, each right on time."
+**1:45–2:15 · How it works (architecture slide)**
+> "Every message rides on Nexconn: group channels for rooms, community channels for 10,000-fan stadiums, custom message types for roars, predictions and match markers, history for late joiners and replays, webhooks for live stats. Each message carries the sender's delay; the reader's phone holds it until match time plus their own delay. Nexconn delivers fast, SameBall delivers on time."
 
-**1:30–1:45 · The Wave**
-On Rahul's phone tap the "🌊 That moment rippled through 2 screens" pill. The dots light up one after the other. Tap **Share story** and show the image.
-> "The Wave shows the moment rippling across the squad. Every reaction waited for each screen."
+**2:15–2:45 · Traction and two users**
+Cut to `/stats`: users, rooms, spoilers blocked, the daily chart. Then two real quotes on screen.
+> "`<N>` fans, `<N>` rooms, `<N>` spoilers blocked." (read the real numbers off `/stats`)
+> Quote 1: "`<real user quote>`" (`<name>`)
+> Quote 2: "`<real user quote>`" (`<name>`)
+> "Try it alone at sameball.vercel.app/try."
 
-**1:45–2:00 · Real usage**
-Cut to the `/stats` page: users, rooms, spoilers blocked, the daily chart.
-> "Real fans, real rooms, every message delivered by Nexconn. SameBall: the group chat that never spoils the match. Try it alone at sameball.vercel.app/try."
+<!-- Real numbers and real quotes only, with permission. Leave the beat out rather than invent them. -->
 
-## Optional extra beat (if time allows): Call it
-Before the wicket, Priya opens ⋯ → 🎯 Call it → "Next ball?". Both phones pick. Priya locks picks as the bowler runs in, then taps "It was: OUT". Rahul's phone shows the answer only when the wicket reaches his screen: "You called it!".
+## Spare shots (for cuts)
 
-## Shots to grab in case of retakes
-
-- Close-up of a locked bubble with its countdown ring.
-- The lag sheet (How are you watching?) with the feed options.
-- The Lag Leaderboard ("⚡ Live wire" vs "🦕 25s in the past").
+- A locked bubble with its countdown ring.
+- The feed picker ("How are you watching?").
+- Lag Leaderboard: "⚡ Live wire" vs "🦕 25s in the past".
+- The score strip holding the score until the ball lands on the slow phone.
+- A moment card ("reached every screen") and a voice note unlocking.
