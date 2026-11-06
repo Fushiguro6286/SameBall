@@ -7,6 +7,7 @@ import { ChatTimeline } from "@/components/ChatTimeline";
 import { Composer } from "@/components/Composer";
 import { ConnBanner } from "@/components/ConnBanner";
 import { FeedbackPrompt } from "@/components/FeedbackPrompt";
+import { GhostPanel } from "@/components/GhostPanel";
 import { HypeStrip } from "@/components/HypeStrip";
 import { LagBoard, useWatching } from "@/components/LagBoard";
 import { RoarButton } from "@/components/RoarButton";
@@ -22,12 +23,14 @@ import { Sheet } from "@/components/Sheet";
 import { errorText, startSession } from "@/lib/client/api";
 import { setMetricsUser, track } from "@/lib/client/metrics";
 import { loadBlocked, loadProfile, loadRoomPrefs, loadSetting, rememberRoom, saveBlocked, saveProfile, saveSetting } from "@/lib/client/storage";
-import { AVATARS, LAG_SOURCES, QUICK_CHIPS, asSport, type Sport } from "@/lib/config";
+import { AVATARS, FEATURES, LAG_SOURCES, QUICK_CHIPS, asSport, type Sport } from "@/lib/config";
+import { useNow } from "@/lib/client/useNow";
 import { t } from "@/lib/i18n";
 import { useRoom, type RoomSession } from "@/lib/room/useRoom";
 
 const DEFAULT_SOURCE = LAG_SOURCES.find((s) => s.id === "streaming")!;
 const TV_SOURCE = LAG_SOURCES.find((s) => s.id === "tv")!;
+const REPLAY_AHEAD_MS = 30_000;
 
 function demoGuestId(): string {
   // Per tab, so two demo tabs act as two different people.
@@ -80,6 +83,7 @@ export function RoomClient({
   const router = useRouter();
   const params = useSearchParams();
   const second = kind === "try" && params.get("second") === "1";
+  const replay = FEATURES.ghostCrowd && kind !== "try" && params.get("replay") === "1";
   const [phase, setPhase] = useState<"init" | "join" | "joining" | "room">("init");
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState<string>(AVATARS[0]);
@@ -157,7 +161,20 @@ export function RoomClient({
   }, []);
 
   if (phase === "room" && session)
-    return <RoomView session={session} roomName={currentName} sport={asSport(sport)} isTry={kind === "try"} second={second} startsAt={startsAt} ownerId={ownerId} notice={notice} />;
+    return (
+      <RoomView
+        key={replay ? "replay" : "live"}
+        session={session}
+        roomName={currentName}
+        sport={asSport(sport)}
+        isTry={kind === "try"}
+        second={second}
+        replay={replay}
+        startsAt={startsAt}
+        ownerId={ownerId}
+        notice={notice}
+      />
+    );
 
   return (
     <main className="floodlight flex flex-1 flex-col items-center justify-center px-4 py-10">
@@ -196,6 +213,7 @@ function RoomView({
   sport,
   isTry,
   second,
+  replay,
   startsAt,
   ownerId,
   notice,
@@ -205,6 +223,7 @@ function RoomView({
   sport: Sport;
   isTry: boolean;
   second: boolean;
+  replay: boolean;
   startsAt?: number;
   ownerId?: string;
   notice: string | null;
@@ -242,7 +261,10 @@ function RoomView({
     setGlow(level);
     if (glowTimer.current) clearTimeout(glowTimer.current);
     glowTimer.current = setTimeout(() => setGlow(0), holdMs);
-  });
+  }, replay);
+  const [synced, setSynced] = useState(false);
+  // Replay shows only what's due within REPLAY_AHEAD_MS, so this re-renders as items come into range.
+  const nowMs = useNow(replay && synced && !room.paused, 1000, room.clockOffset);
   useEffect(
     () => () => {
       crowd.current?.close();
@@ -273,16 +295,22 @@ function RoomView({
     document.title = counts ? `(${counts}) ${roomName}` : roomName;
   }, [room.unseen, room.lockedCount, roomName]);
 
-  const watching = useWatching(session.guestId, session.key ?? "", session.code, !session.demo && !!session.key);
+  const watching = useWatching(session.guestId, session.key ?? "", session.code, !replay && !session.demo && !!session.key);
   // My own entry always shows my current lag, even before my latest stamp goes out.
   const boardEntries = [
     ...room.lags.filter((l) => l.senderId !== session.guestId),
     { senderId: session.guestId, name: session.name, avatar: session.avatar, lag: room.lagMs },
   ];
   const lagS = Math.round(room.lagMs / 1000);
-  const view = blocked.size ? room.view.filter((v) => !blocked.has(v.senderId)) : room.view;
+  let view = blocked.size ? room.view.filter((v) => !blocked.has(v.senderId)) : room.view;
+  // A replay has hundreds of messages still ahead: show only the next few locked ones, none while paused or before sync.
+  if (replay)
+    view = view
+      .filter((v) => !v.locked || (synced && !room.paused && v.revealAt - nowMs <= REPLAY_AHEAD_MS))
+      .map((v) => (v.locked ? { ...v, lockedSince: Math.max(v.lockedSince, v.revealAt - REPLAY_AHEAD_MS) } : v));
   const pending = blocked.size ? room.pending.filter((p) => !blocked.has(p.senderId)) : room.pending;
-  const empty = room.ready && room.view.length === 0;
+  const empty = !replay && room.ready && room.view.length === 0;
+  const canChat = room.ready && (!replay || synced);
 
   return (
     <div className="flex h-dvh flex-col">
@@ -293,23 +321,27 @@ function RoomView({
         </Link>
         <div className="min-w-0 flex-1">
           <h1 className="truncate font-display text-2xl leading-tight">{roomName}</h1>
-          <LagBoard
-            entries={boardEntries}
-            auth={session.key ? { guestId: session.guestId, key: session.key } : null}
-            code={session.code}
-            isOwner={!!ownerId && ownerId === session.guestId}
-            watching={watching}
-            blocked={blocked}
-            onToggleBlock={toggleBlock}
-          />
+          {!replay && (
+            <LagBoard
+              entries={boardEntries}
+              auth={session.key ? { guestId: session.guestId, key: session.key } : null}
+              code={session.code}
+              isOwner={!!ownerId && ownerId === session.guestId}
+              watching={watching}
+              blocked={blocked}
+              onToggleBlock={toggleBlock}
+            />
+          )}
         </div>
-        <button
-          onClick={() => setLagOpen(true)}
-          aria-label={`${t.room.lagButtonLabel}: ${t.room.lagBadge(lagS)}`}
-          className="rounded-full border border-accent/60 bg-accent/10 px-3 py-1.5 text-sm font-semibold text-accent"
-        >
-          ⏱ {t.room.lagBadge(lagS)}
-        </button>
+        {!replay && (
+          <button
+            onClick={() => setLagOpen(true)}
+            aria-label={`${t.room.lagButtonLabel}: ${t.room.lagBadge(lagS)}`}
+            className="rounded-full border border-accent/60 bg-accent/10 px-3 py-1.5 text-sm font-semibold text-accent"
+          >
+            ⏱ {t.room.lagBadge(lagS)}
+          </button>
+        )}
         <button onClick={() => setMenuOpen(true)} aria-label={t.room.menu} className="rounded-full px-2 py-1 text-xl">
           ⋯
         </button>
@@ -335,20 +367,45 @@ function RoomView({
         />
       )}
 
-      {startsAt && origin && <StartBanner startsAt={startsAt} roomName={roomName} code={session.code} url={`${origin}/r/${session.code}`} />}
+      {replay && (
+        <GhostPanel
+          code={session.code}
+          anchors={room.anchors}
+          firstAt={room.firstAt}
+          lockedCount={room.lockedCount}
+          ready={room.ready}
+          synced={synced}
+          paused={room.paused}
+          clockOffset={room.clockOffset}
+          matchNow={room.matchNow}
+          onSync={(lag) => {
+            room.resume();
+            room.setLag(lag, "replay");
+            setSynced(true);
+          }}
+          onPause={room.pause}
+          onResume={room.resume}
+          onNudge={room.nudge}
+          onResync={() => setSynced(false)}
+        />
+      )}
 
-      <SyncCheckCard
-        sync={room.sync}
-        myId={session.guestId}
-        lagMs={room.lagMs}
-        clockOffset={room.clockOffset}
-        roomCode={session.code}
-        onTap={room.syncTap}
-        onApply={(ms) => {
-          setSource("custom");
-          room.setLag(ms, "custom");
-        }}
-      />
+      {!replay && startsAt && origin && <StartBanner startsAt={startsAt} roomName={roomName} code={session.code} url={`${origin}/r/${session.code}`} />}
+
+      {!replay && (
+        <SyncCheckCard
+          sync={room.sync}
+          myId={session.guestId}
+          lagMs={room.lagMs}
+          clockOffset={room.clockOffset}
+          roomCode={session.code}
+          onTap={room.syncTap}
+          onApply={(ms) => {
+            setSource("custom");
+            room.setLag(ms, "custom");
+          }}
+        />
+      )}
 
       {empty && !isTry ? (
         <section className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
@@ -360,15 +417,15 @@ function RoomView({
         <ChatTimeline items={view} clockOffset={room.clockOffset} announce={room.announce} onSpoil={room.spoil} />
       )}
 
-      {!session.demo && !isTry && <FeedbackPrompt guestId={session.guestId} guestKey={session.key ?? ""} roomCode={session.code} />}
+      {!session.demo && !isTry && !replay && <FeedbackPrompt guestId={session.guestId} guestKey={session.key ?? ""} roomCode={session.code} />}
       {!soundOn && !muted && room.ready && (
         <button onClick={unlockSound} className="mx-auto mb-1 rounded-full border border-line bg-surface-2 px-3 py-1 text-xs text-muted">
           {t.roar.soundOn}
         </button>
       )}
-      {suspense && <HypeStrip pending={pending} clockOffset={room.clockOffset} />}
-      <Composer disabled={!room.ready} onSend={room.sendText} chips={QUICK_CHIPS[sport]}>
-        <RoarButton disabled={!room.ready} onStart={() => !soundOn && !muted && unlockSound()} onRoar={(i, d) => room.sendRoar(i, d).catch(() => undefined)} />
+      {suspense && !(replay && (!synced || room.paused)) && <HypeStrip pending={pending} clockOffset={room.clockOffset} />}
+      <Composer disabled={!canChat} onSend={room.sendText} chips={QUICK_CHIPS[sport]}>
+        <RoarButton disabled={!canChat} onStart={() => !soundOn && !muted && unlockSound()} onRoar={(i, d) => room.sendRoar(i, d).catch(() => undefined)} />
       </Composer>
 
       {/* Floodlight glow while the crowd roars. Decorative only. */}
@@ -397,13 +454,20 @@ function RoomView({
           >
             {t.room.invite}
           </button>
-          <button
-            onClick={() => (setMenuOpen(false), setSyncOpen(true))}
-            disabled={!room.ready}
-            className="rounded-2xl border border-line bg-surface-2 px-4 py-3 text-left disabled:opacity-50"
-          >
-            {t.sync.menu}
-          </button>
+          {FEATURES.ghostCrowd && !isTry && !replay && (
+            <Link href={`/r/${session.code}?replay=1`} className="rounded-2xl border border-line bg-surface-2 px-4 py-3 text-left">
+              {t.ghost.menu}
+            </Link>
+          )}
+          {!replay && (
+            <button
+              onClick={() => (setMenuOpen(false), setSyncOpen(true))}
+              disabled={!room.ready}
+              className="rounded-2xl border border-line bg-surface-2 px-4 py-3 text-left disabled:opacity-50"
+            >
+              {t.sync.menu}
+            </button>
+          )}
           {confirmAll ? (
             <div className="rounded-2xl border border-danger/60 bg-danger/10 p-3 text-sm">
               <p>{t.room.revealAllConfirm}</p>

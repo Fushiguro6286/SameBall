@@ -129,6 +129,28 @@ export const en = {
     secondName: "Second screen",
   },
 
+  ghost: {
+    menu: "👻 Watch with the crowd (replay)",
+    title: "Watch with the crowd",
+    body: "Start your replay. When it reaches the moment below, tap Sync. The room's chat and roars then replay with your video.",
+    pick: "Sync on",
+    startOfChat: "Start of the chat",
+    sync: "Sync · it's on my screen now",
+    waiting: (n: number) => `${n} message${n === 1 ? "" : "s"} waiting for your replay`,
+    nothing: "Nothing to replay in this room yet.",
+    loading: "Loading the room's chat…",
+    position: (label: string, clock: string) => `${label} ${clock}`,
+    paused: "Paused",
+    pause: "Pause",
+    resume: "Resume",
+    resync: "Re-sync",
+    nudgeHelp: "Chat ahead of your replay? Tap −10s. Behind? +10s.",
+    nudge: (s: number) => `${s > 0 ? "+" : "−"}${Math.abs(s) >= 60 ? `${Math.abs(s) / 60}m` : `${Math.abs(s)}s`}`,
+    nudgeLabel: (s: number) => `Move the chat ${s > 0 ? "forward" : "back"} ${Math.abs(s)} seconds`,
+    live: "← Back to live chat",
+    badge: "REPLAY",
+  },
+
   schedule: {
     field: "Starts at (optional)",
     startsIn: (ms: number) => {

@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { HISTORY_PAGES } from "../config";
+import { HISTORY_PAGES, HISTORY_PAGES_REPLAY } from "../config";
 import { fetchServerTime } from "../client/api";
 import { track } from "../client/metrics";
 import { saveRoomPrefs } from "../client/storage";
 import { measureOffset } from "../timing/clock";
-import { matchTime, revealAt, type ChatMsg } from "../timing/engine";
+import { LIVE_MAX_LAG_MS, MAX_LAG_MS, matchTime, revealAt, type ChatMsg } from "../timing/engine";
 import type { Pending } from "../timing/hype";
 import type { Tap } from "../timing/sync-solver";
 import { RoomStore, type ViewItem } from "../timing/room-store";
@@ -43,6 +43,9 @@ interface Snapshot {
   anchors: Anchor[];
   lags: MemberLag[];
   sync: SyncState | null;
+  paused: boolean;
+  /** Match time of the first text message, the replay fallback when a room has no anchors. */
+  firstAt: number | null;
 }
 /** The latest Sync Check and its taps. Control messages, readable even while locked. */
 export interface SyncState {
@@ -76,7 +79,7 @@ export interface MemberLag {
 }
 function lagsOf(st: RoomStore): MemberLag[] {
   const latest = new Map<string, MemberLag>();
-  for (const m of st.all()) if (m.lag !== null) latest.set(m.senderId, { senderId: m.senderId, name: m.senderName, avatar: m.avatar, lag: m.lag });
+  for (const m of st.all()) if (m.lag !== null && m.lag <= LIVE_MAX_LAG_MS) latest.set(m.senderId, { senderId: m.senderId, name: m.senderName, avatar: m.avatar, lag: m.lag });
   return [...latest.values()];
 }
 /** Anchors are schedule markers ("First ball"), not chat content, so they are readable even while locked. */
@@ -99,6 +102,8 @@ const snapshot = (st: RoomStore): Snapshot => ({
   anchors: anchorsOf(st),
   lags: lagsOf(st),
   sync: syncOf(st),
+  paused: st.paused,
+  firstAt: ((m) => (m ? matchTime(m) : null))(st.all().find((m) => m.kind === "text")),
 });
 
 /** A roar that just reached my screen. */
@@ -110,7 +115,9 @@ export interface RoarHit {
 }
 const ROAR_FRESH_MS = 4000; // older roars (history, late arrivals) stay silent
 
-export function useRoom(s: RoomSession, initialLagMs: number, initialSource: string, onRoar?: (r: RoarHit) => void) {
+/** `replay` (Ghost Crowd): start with everything locked until the viewer syncs to an anchor; no lag announcements or spoiler metrics. */
+export function useRoom(s: RoomSession, initialLagMs: number, initialSource: string, onRoar?: (r: RoarHit) => void, replay = false) {
+  const startLag = replay ? MAX_LAG_MS : initialLagMs;
   const onRoarRef = useRef(onRoar);
   useEffect(() => {
     onRoarRef.current = onRoar;
@@ -121,7 +128,18 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
   const sourceRef = useRef(initialSource);
   const lagTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const emitRoarsRef = useRef<(msgs: ChatMsg[]) => void>(() => {});
-  const [snap, setSnap] = useState<Snapshot>({ view: [], lockedCount: 0, lagMs: initialLagMs, pending: [], anchors: [], lags: [], sync: null });
+  const nowRef = useRef(() => Date.now());
+  const [snap, setSnap] = useState<Snapshot>({
+    view: [],
+    lockedCount: 0,
+    lagMs: startLag,
+    pending: [],
+    anchors: [],
+    lags: [],
+    sync: null,
+    paused: false,
+    firstAt: null,
+  });
   const [heldBack, setHeldBack] = useState(0);
   const [status, setStatus] = useState<RoomStatus>("connecting");
   const [attempt, setAttempt] = useState(0);
@@ -134,6 +152,7 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     let disposed = false;
     let offset = 0;
     const now = () => Date.now() + offset;
+    nowRef.current = now;
     const offs: (() => void)[] = [];
 
     const noteVisible = (msgs: ChatMsg[]) => {
@@ -144,10 +163,11 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
       if (document.visibilityState === "hidden") setUnseen((n) => n + others.length);
     };
 
-    const store: RoomStore = new RoomStore(s.guestId, initialLagMs, now, {
-      onLocked: (m) => m.kind === "text" && track("message_locked", s.code),
+    const store: RoomStore = new RoomStore(s.guestId, startLag, now, {
+      // Replays would count every old message as a "spoiler blocked", so they track nothing here.
+      onLocked: (m) => !replay && m.kind === "text" && track("message_locked", s.code),
       onRevealed: (msgs, how) => {
-        for (const m of msgs) if (m.kind === "text") track(how === "spoil" ? "spoil_me" : "revealed_on_time", s.code);
+        if (!replay) for (const m of msgs) if (m.kind === "text") track(how === "spoil" ? "spoil_me" : "revealed_on_time", s.code);
         if (how === "schedule") {
           const held = msgs.filter((m) => m.kind === "text" && m.senderId !== s.guestId).length;
           if (held && !disposed) setHeldBack((n) => n + held);
@@ -194,12 +214,13 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     };
 
     const loadHistory = async () => {
-      const raws = await transport.loadHistory(HISTORY_PAGES);
+      const raws = await transport.loadHistory(replay ? HISTORY_PAGES_REPLAY : HISTORY_PAGES);
       if (!disposed) store.add(raws.map(parseIncoming).filter((m): m is ChatMsg => !!m));
     };
 
     // Tell the room my lag once per connection, unless my latest stamp already says it.
     const announceLag = () => {
+      if (replay) return;
       const lag = store.effectiveLag();
       const mine = store.all().filter((m) => m.senderId === s.guestId && m.kind === "lag").at(-1);
       if (mine?.lag === lag) return;
@@ -268,7 +289,7 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     };
     // initialLagMs/source are read once per connection on purpose.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s.code, s.guestId, s.token, s.demo, attempt]);
+  }, [s.code, s.guestId, s.token, s.demo, attempt, replay]);
 
   const sendText = useCallback(
     async (text: string) => {
@@ -332,6 +353,7 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
       const store = storeRef.current;
       if (!store) return;
       store.setLag(ms);
+      if (replay) return; // a replay lag is hours long and private to this viewer
       sourceRef.current = source;
       const lag = store.effectiveLag();
       if (!s.ephemeral) saveRoomPrefs(s.code, { lagMs: lag, source });
@@ -351,7 +373,7 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
         track("lag_set", s.code, { source: sourceRef.current, lagS: Math.round(st.effectiveLag() / 1000) });
       }, 800);
     },
-    [s.code, s.name, s.avatar, s.ephemeral],
+    [s.code, s.name, s.avatar, s.ephemeral, replay],
   );
 
   return {
@@ -371,5 +393,14 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     setLag,
     spoil: (id: string) => storeRef.current?.spoil(id),
     spoilAll: () => storeRef.current?.spoilAll(),
+    pause: () => storeRef.current?.pause(),
+    resume: () => storeRef.current?.resume(),
+    /** Replay only: move my lag by `ms` (positive = the chat goes back in the match). */
+    nudge: (ms: number) => {
+      const st = storeRef.current;
+      if (st) st.setLag(st.effectiveLag() + ms);
+    },
+    /** The match moment my screen shows right now (server time minus my lag). */
+    matchNow: () => nowRef.current() - (storeRef.current?.effectiveLag() ?? 0),
   };
 }

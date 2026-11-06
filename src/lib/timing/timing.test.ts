@@ -32,7 +32,7 @@ describe("reveal math", () => {
     const m = msg({ id: "a", sentTime: 100_000, lag: 30_000 });
     expect(isLocked(m, "me", 10_000, 100_000)).toBe(false);
   });
-  it("clamps lag to 0..6h", () => {
+  it("clamps lag to 0..180 days", () => {
     expect(clampLag(-5)).toBe(0);
     expect(clampLag(MAX_LAG_MS + 1)).toBe(MAX_LAG_MS);
     expect(clampLag(NaN)).toBe(0);
@@ -161,6 +161,25 @@ describe("RoomStore", () => {
     offset = 30_000;
     s.clockChanged();
     expect(s.isRevealed("a")).toBe(true);
+  });
+
+  it("replay: everything waits at max lag, then syncing to an anchor replays from there", () => {
+    const day = 24 * 3_600_000;
+    const s = new RoomStore("me", MAX_LAG_MS, clock);
+    const kickoff = now - 2 * day;
+    s.add([
+      msg({ id: "before", sentTime: kickoff - 1_000 }),
+      msg({ id: "anchor", kind: "anchor", text: undefined, payload: { label: "Kick-off" }, sentTime: kickoff }),
+      msg({ id: "after", sentTime: kickoff + 30_000, lag: 10_000 }), // match time kickoff + 20s
+    ]);
+    expect(s.lockedCount()).toBe(2);
+    s.setLag(now - kickoff); // my replay shows kick-off right now
+    expect(s.isRevealed("before")).toBe(true);
+    expect(s.isRevealed("anchor")).toBe(true);
+    advance(19_999);
+    expect(s.isRevealed("after")).toBe(false);
+    advance(1);
+    expect(s.isRevealed("after")).toBe(true);
   });
 
   it("only text messages render as bubbles", () => {

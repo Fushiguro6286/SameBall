@@ -1,6 +1,9 @@
 // Pure timing math. All times are server-time milliseconds.
 
-export const MAX_LAG_MS = 6 * 60 * 60_000;
+// Ghost Crowd replays a room days later, so the clamp matches Nexconn's 180-day history.
+export const MAX_LAG_MS = 180 * 24 * 60 * 60_000;
+/** Lags above this are replay viewers, not live feeds (left out of the Lag Leaderboard). */
+export const LIVE_MAX_LAG_MS = 6 * 60 * 60_000;
 
 export function clampLag(ms: number): number {
   if (!Number.isFinite(ms)) return 0;

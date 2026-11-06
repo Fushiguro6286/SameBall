@@ -37,6 +37,13 @@ Session/token/join, room create, rejoin, bad name 400, unknown room 404; browser
 Judge Mode API (create, join, start idempotent, steps once/early 425/non-member 403, bot text + bot roar accepted by Nexconn); presence; admin (401 without token, feature on/off, anchor posted, try rooms 404, start-time bounds); guest keys (reuse without/with wrong key 401, legacy guest upgraded once); moderation (non-owner 403, mute and remove accepted by Nexconn, removed member gets 403 on rejoin); report; webhook (signed 204, retry deduped, bad/stale signature 401).
 **Not verified in a browser** (the Chrome extension wasn't connected): the new room UI (chips, Hype strip, roar button and audio, Judge Mode panel, leaderboard, Sync Check card, start banner). Needs the phone checklist.
 
+### Phase 3 (P2), Nov 6
+- **Ghost Crowd (replay)**, behind `NEXT_PUBLIC_FEATURE_GHOST_CROWD=1`. Room menu → "Watch with the crowd", or link `/r/CODE?replay=1`. Everything starts locked; pick an anchor (or "Start of the chat" if the room has none) and tap Sync when your replay shows it: `lag = serverNow − anchor.matchTime`. Then pause/resume, −1m/−10s/+10s/+1m, a match clock ("First ball +12:34"), Re-sync. Chat and roars replay through the normal engine; messages you send carry your replay lag, so later viewers see them at the right moment. Loads up to 2,000 messages (20 pages).
+  - Only locked bubbles due in the next 30 s are shown (none while paused or before sync); Hype strip hidden while paused.
+  - Replays send no SB:Lag, skip presence, feedback, Sync Check and the leaderboard, and track no `message_locked`/`revealed_on_time`/`spoil_me`, so they never inflate "spoilers blocked". Only `replay_started`.
+  - **Changed from the brief:** lag clamp raised from 6 h to 180 days (Nexconn keeps chat 180 days); otherwise a next-day replay (the Judges' room) is impossible. Lags above 6 h are left out of the Lag Leaderboard.
+  - Tested: unit test for sync-to-anchor replay; typecheck, lint, build. **Not tried in a browser** (Chrome extension not connected).
+
 ## Next
 - You: phone test of the P1 UI (checklist in chat), Nexconn Console settings below, then Phase 3 (P2).
 
