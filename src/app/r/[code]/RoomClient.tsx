@@ -15,6 +15,7 @@ import { StartBanner } from "@/components/StartBanner";
 import { SyncCheckCard, SyncStartSheet } from "@/components/SyncCheck";
 import { Toggle } from "@/components/Toggle";
 import { TryPanel } from "@/components/TryPanel";
+import { WaveSheet } from "@/components/WaveSheet";
 import { Crowd } from "@/lib/audio/crowd";
 import { InvitePanel } from "@/components/InvitePanel";
 import { LagSheet } from "@/components/LagSheet";
@@ -31,6 +32,7 @@ import { useRoom, type RoomSession } from "@/lib/room/useRoom";
 const DEFAULT_SOURCE = LAG_SOURCES.find((s) => s.id === "streaming")!;
 const TV_SOURCE = LAG_SOURCES.find((s) => s.id === "tv")!;
 const REPLAY_AHEAD_MS = 30_000;
+const WAVE_FRESH_MS = 3 * 60_000;
 
 function demoGuestId(): string {
   // Per tab, so two demo tabs act as two different people.
@@ -278,11 +280,13 @@ function RoomView({
     setSoundOn(await crowd.current.unlock());
   };
   const [source, setSource] = useState(prefs.source);
-  const [lagOpen, setLagOpen] = useState(prefs.first);
+  const [lagOpen, setLagOpen] = useState(prefs.first && !replay);
   const [menuOpen, setMenuOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [syncOpen, setSyncOpen] = useState(false);
   const [confirmAll, setConfirmAll] = useState(false);
+  const [waveOpen, setWaveOpen] = useState(false);
+  const [waveSeen, setWaveSeen] = useState<string | null>(null);
   const [origin, setOrigin] = useState("");
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- window is browser-only
@@ -310,6 +314,11 @@ function RoomView({
       .map((v) => (v.locked ? { ...v, lockedSince: Math.max(v.lockedSince, v.revealAt - REPLAY_AHEAD_MS) } : v));
   const pending = blocked.size ? room.pending.filter((p) => !blocked.has(p.senderId)) : room.pending;
   const empty = !replay && room.ready && room.view.length === 0;
+  // The Wave: offer the latest moment while it's fresh on my screen. A replay viewer isn't part of the live squad's wave.
+  const waveMembers = replay ? room.lags : boardEntries;
+  const latestMoment = FEATURES.wave ? room.moments.at(-1) : undefined;
+  const waveNow = useNow(!!latestMoment, 15_000, room.clockOffset);
+  const showWavePill = !!latestMoment && latestMoment.id !== waveSeen && waveNow - (latestMoment.matchTime + room.lagMs) < WAVE_FRESH_MS;
   const canChat = room.ready && (!replay || synced);
 
   return (
@@ -423,6 +432,19 @@ function RoomView({
           {t.roar.soundOn}
         </button>
       )}
+      {showWavePill && (
+        <div className="mx-auto mb-1 flex max-w-xl items-center gap-1 px-3">
+          <button
+            onClick={() => (setWaveOpen(true), setWaveSeen(latestMoment.id))}
+            className="pop-in min-w-0 flex-1 truncate rounded-full border border-accent/60 bg-accent/10 px-3 py-1.5 text-sm font-semibold text-accent"
+          >
+            {t.wave.pill(new Set([...waveMembers.map((m) => m.senderId), ...latestMoment.reactors.map((r) => r.senderId)]).size)}
+          </button>
+          <button onClick={() => setWaveSeen(latestMoment.id)} aria-label={t.wave.dismiss} className="rounded-full px-2 py-1 text-muted">
+            ✕
+          </button>
+        </div>
+      )}
       {suspense && !(replay && (!synced || room.paused)) && <HypeStrip pending={pending} clockOffset={room.clockOffset} />}
       <Composer disabled={!canChat} onSend={room.sendText} chips={QUICK_CHIPS[sport]}>
         <RoarButton disabled={!canChat} onStart={() => !soundOn && !muted && unlockSound()} onRoar={(i, d) => room.sendRoar(i, d).catch(() => undefined)} />
@@ -454,6 +476,11 @@ function RoomView({
           >
             {t.room.invite}
           </button>
+          {FEATURES.wave && room.moments.length > 0 && (
+            <button onClick={() => (setMenuOpen(false), setWaveOpen(true))} className="rounded-2xl border border-line bg-surface-2 px-4 py-3 text-left">
+              {t.wave.menu} ({room.moments.length})
+            </button>
+          )}
           {FEATURES.ghostCrowd && !isTry && !replay && (
             <Link href={`/r/${session.code}?replay=1`} className="rounded-2xl border border-line bg-surface-2 px-4 py-3 text-left">
               {t.ghost.menu}
@@ -511,6 +538,10 @@ function RoomView({
           />
         </div>
       </Sheet>
+
+      {FEATURES.wave && (
+        <WaveSheet open={waveOpen} onClose={() => setWaveOpen(false)} moments={room.moments} members={waveMembers} roomName={roomName} code={session.code} />
+      )}
 
       <SyncStartSheet open={syncOpen} onClose={() => setSyncOpen(false)} onStart={room.startSyncCheck} />
 

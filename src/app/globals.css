@@ -103,6 +103,27 @@ dialog::backdrop {
   background: rgba(3, 5, 12, 0.7);
 }
 
+/* The Wave: each member's dot lights up when the moment reaches their screen. */
+@keyframes wave-light {
+  from {
+    opacity: 0.25;
+    transform: translate(-50%, 0) scale(0.8);
+    filter: grayscale(1);
+  }
+  60% {
+    transform: translate(-50%, 0) scale(1.3);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+    filter: none;
+    box-shadow: 0 0 18px 3px rgba(198, 255, 61, 0.5);
+  }
+}
+.wave-light {
+  animation: wave-light 0.6s ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

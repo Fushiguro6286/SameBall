@@ -43,4 +43,5 @@ export const FEEDBACK_AFTER_MS = 20 * 60_000;
 /** P2 feature flags. Literal env names so Next inlines them at build time. */
 export const FEATURES = {
   ghostCrowd: process.env.NEXT_PUBLIC_FEATURE_GHOST_CROWD === "1",
+  wave: process.env.NEXT_PUBLIC_FEATURE_WAVE === "1",
 };

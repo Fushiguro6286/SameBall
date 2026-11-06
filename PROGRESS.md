@@ -42,7 +42,12 @@ Judge Mode API (create, join, start idempotent, steps once/early 425/non-member 
   - Only locked bubbles due in the next 30 s are shown (none while paused or before sync); Hype strip hidden while paused.
   - Replays send no SB:Lag, skip presence, feedback, Sync Check and the leaderboard, and track no `message_locked`/`revealed_on_time`/`spoil_me`, so they never inflate "spoilers blocked". Only `replay_started`.
   - **Changed from the brief:** lag clamp raised from 6 h to 180 days (Nexconn keeps chat 180 days); otherwise a next-day replay (the Judges' room) is impossible. Lags above 6 h are left out of the Lag Leaderboard.
-  - Tested: unit test for sync-to-anchor replay; typecheck, lint, build. **Not tried in a browser** (Chrome extension not connected).
+  - Tested: unit test for sync-to-anchor replay; in a browser on the demo transport with a seeded match from yesterday: sync on "First ball" shows only pre-match chat, +10s nudges unlock the reactions in match order, pause freezes the clock, no lag sheet in replay.
+- **The Wave**, behind `NEXT_PUBLIC_FEATURE_WAVE=1` (`timing/wave.ts`, tested). A moment = reactions (roars, chips, hype-weighted text) within 10 s of match time, summed hype weight ≥ 6 from ≥ 2 people; 30 s gap before the next. Built only from messages already revealed for me, so it never shows ahead of my screen; replay viewers are left out. Each member's hit time = moment.matchTime + lag (their reaction's stamp if they reacted, else their latest lag).
+  - UI: a "🌊 That moment rippled through N screens" pill for 3 min after the moment hits my screen, plus "The Wave (N)" in the room menu. Sheet: animated dots lighting up along a time axis (overlaps go to a second lane), list with offsets, caption "⚡ first, 🦕 last. Every reaction waited for each screen." (no "0 spoilers" claim, since we can't see other people's spoil-me taps).
+  - Story export: 1080×1920 PNG drawn on a canvas (no new dependency), Web Share with files, download fallback. Names, avatars and timings only. ~0.2 s. Tracks `wave_shared`.
+  - Tested in the browser (demo transport): card, caption, lanes, story image checked visually.
+- Fixes found while testing: countdowns could show a stale time for one second after a quiet period (`useNow` now ticks immediately); anchor senders (the host bot) no longer count as room members on the leaderboard or the wave.
 
 ## Next
 - You: phone test of the P1 UI (checklist in chat), Nexconn Console settings below, then Phase 3 (P2).

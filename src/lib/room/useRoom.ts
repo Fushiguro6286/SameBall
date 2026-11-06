@@ -10,6 +10,7 @@ import { LIVE_MAX_LAG_MS, MAX_LAG_MS, matchTime, revealAt, type ChatMsg } from "
 import type { Pending } from "../timing/hype";
 import type { Tap } from "../timing/sync-solver";
 import { RoomStore, type ViewItem } from "../timing/room-store";
+import { findMoments, type Moment } from "../timing/wave";
 import { createLocalTransport } from "../transport/local";
 import { createNexconnTransport } from "../transport/nexconn";
 import type { ConnState, Transport } from "../transport/types";
@@ -46,6 +47,8 @@ interface Snapshot {
   paused: boolean;
   /** Match time of the first text message, the replay fallback when a room has no anchors. */
   firstAt: number | null;
+  /** Big moments, from reactions already revealed for me (so never ahead of my screen). */
+  moments: Moment[];
 }
 /** The latest Sync Check and its taps. Control messages, readable even while locked. */
 export interface SyncState {
@@ -70,7 +73,7 @@ function syncOf(st: RoomStore): SyncState | null {
       .map((m) => ({ senderId: m.senderId, sentTime: m.sentTime, lag: m.lag ?? 0 })),
   };
 }
-/** Each member's latest lag stamp (from any of their messages), for the Lag Leaderboard. */
+/** Each member's latest lag stamp, for the Lag Leaderboard and The Wave. Anchors are left out so the host bot isn't a "member". */
 export interface MemberLag {
   senderId: string;
   name: string;
@@ -79,7 +82,7 @@ export interface MemberLag {
 }
 function lagsOf(st: RoomStore): MemberLag[] {
   const latest = new Map<string, MemberLag>();
-  for (const m of st.all()) if (m.lag !== null && m.lag <= LIVE_MAX_LAG_MS) latest.set(m.senderId, { senderId: m.senderId, name: m.senderName, avatar: m.avatar, lag: m.lag });
+  for (const m of st.all()) if (m.lag !== null && m.lag <= LIVE_MAX_LAG_MS && m.kind !== "anchor") latest.set(m.senderId, { senderId: m.senderId, name: m.senderName, avatar: m.avatar, lag: m.lag });
   return [...latest.values()];
 }
 /** Anchors are schedule markers ("First ball"), not chat content, so they are readable even while locked. */
@@ -104,6 +107,7 @@ const snapshot = (st: RoomStore): Snapshot => ({
   sync: syncOf(st),
   paused: st.paused,
   firstAt: ((m) => (m ? matchTime(m) : null))(st.all().find((m) => m.kind === "text")),
+  moments: findMoments(st.all().filter((m) => st.isRevealed(m.id))),
 });
 
 /** A roar that just reached my screen. */
@@ -139,6 +143,7 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     sync: null,
     paused: false,
     firstAt: null,
+    moments: [],
   });
   const [heldBack, setHeldBack] = useState(0);
   const [status, setStatus] = useState<RoomStatus>("connecting");

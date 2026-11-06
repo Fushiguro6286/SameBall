@@ -151,6 +151,28 @@ export const en = {
     badge: "REPLAY",
   },
 
+  wave: {
+    title: "The Wave",
+    pill: (n: number) => `🌊 That moment rippled through ${n} screens · See the wave`,
+    menu: "🌊 The Wave",
+    caption: (s: number) => `This moment rippled through your squad over ${s} second${s === 1 ? "" : "s"}.`,
+    firstLast: (first: string, last: string) => `⚡ ${first} first, 🦕 ${last} last.`,
+    safe: "Every reaction waited for each screen.",
+    sameTime: "Everyone saw it at the same moment.",
+    offset: (s: number) => (s === 0 ? "first" : `+${s}s`),
+    replay: "Replay",
+    share: "Share story",
+    sharing: "Making image…",
+    downloaded: "Saved the image.",
+    prev: "Previous moment",
+    next: "Next moment",
+    of: (i: number, n: number) => `Moment ${i} of ${n}`,
+    storyKicker: "THE WAVE",
+    storySpread: (s: number) => `${s} SECONDS`,
+    storySub: "from the first screen to the last",
+    dismiss: "Dismiss",
+  },
+
   schedule: {
     field: "Starts at (optional)",
     startsIn: (ms: number) => {
