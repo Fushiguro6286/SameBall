@@ -10,6 +10,7 @@ import { FeedbackPrompt } from "@/components/FeedbackPrompt";
 import { HypeStrip } from "@/components/HypeStrip";
 import { RoarButton } from "@/components/RoarButton";
 import { Toggle } from "@/components/Toggle";
+import { TryPanel } from "@/components/TryPanel";
 import { Crowd } from "@/lib/audio/crowd";
 import { InvitePanel } from "@/components/InvitePanel";
 import { LagSheet } from "@/components/LagSheet";
@@ -23,6 +24,7 @@ import { t } from "@/lib/i18n";
 import { useRoom, type RoomSession } from "@/lib/room/useRoom";
 
 const DEFAULT_SOURCE = LAG_SOURCES.find((s) => s.id === "streaming")!;
+const TV_SOURCE = LAG_SOURCES.find((s) => s.id === "tv")!;
 
 function demoGuestId(): string {
   // Per tab, so two demo tabs act as two different people.
@@ -38,9 +40,39 @@ function demoGuestId(): string {
   }
 }
 
-export function RoomClient({ code, roomName, sport, demo }: { code: string; roomName: string; sport: string; demo: boolean }) {
+// Judge Mode "second window": a separate per-tab guest on the TV feed, flagged as test so one person isn't counted twice.
+const SECOND_KEY = (code: string) => `sb-second:${code}`;
+function readSecondId(code: string): string | undefined {
+  try {
+    return sessionStorage.getItem(SECOND_KEY(code)) ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+function saveSecondId(code: string, id: string) {
+  try {
+    sessionStorage.setItem(SECOND_KEY(code), id);
+  } catch {
+    // ignore
+  }
+}
+
+export function RoomClient({
+  code,
+  roomName,
+  sport,
+  kind = "room",
+  demo,
+}: {
+  code: string;
+  roomName: string;
+  sport: string;
+  kind?: string;
+  demo: boolean;
+}) {
   const router = useRouter();
   const params = useSearchParams();
+  const second = kind === "try" && params.get("second") === "1";
   const [phase, setPhase] = useState<"init" | "join" | "joining" | "room">("init");
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState<string>(AVATARS[0]);
@@ -61,23 +93,36 @@ export function RoomClient({ code, roomName, sport, demo }: { code: string; room
       const prev = loadProfile();
       const ref = params.get("ref") ?? undefined;
       const res = await startSession({
-        guestId: prev?.guestId,
+        guestId: second ? readSecondId(code) : prev?.guestId,
         name: n,
         avatar: a as (typeof AVATARS)[number],
         roomCode: code,
-        ref: ref && /^g_[A-Za-z0-9]{20}$/.test(ref) ? ref : undefined,
+        ref: !second && ref && /^g_[A-Za-z0-9]{20}$/.test(ref) ? ref : undefined,
+        test: second || undefined,
       });
-      saveProfile({ guestId: res.guestId, name: n, avatar: a });
+      if (second) saveSecondId(code, res.guestId);
+      else saveProfile({ guestId: res.guestId, name: n, avatar: a });
       setMetricsUser(res.guestId);
       const room = res.room!;
-      rememberRoom({ code: room.code, name: room.name });
+      if (!second) rememberRoom({ code: room.code, name: room.name });
       setCurrentName(room.name);
       track("joined", room.code);
       if (room.redirectedFrom) {
         setNotice(t.join.redirected(room.name));
         router.replace(`/r/${room.code}`);
       }
-      setSession({ code: room.code, channelId: room.channelId, guestId: res.guestId, name: n, avatar: a, demo: false, token: res.token, appKey: res.appKey, area: res.area });
+      setSession({
+        code: room.code,
+        channelId: room.channelId,
+        guestId: res.guestId,
+        name: n,
+        avatar: a,
+        demo: false,
+        token: res.token,
+        appKey: res.appKey,
+        area: res.area,
+        ephemeral: second,
+      });
       setPhase("room");
     } catch (e) {
       setError(errorText(e));
@@ -90,8 +135,12 @@ export function RoomClient({ code, roomName, sport, demo }: { code: string; room
   useEffect(() => {
     if (autoJoined.current) return;
     autoJoined.current = true;
+    if (second) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time auto-join for the second screen
+      join(t.try.secondName, "⚡");
+      return;
+    }
     const p = loadProfile();
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time read of browser-only storage
     if (p?.name) setName(p.name);
     if (p?.avatar) setAvatar(p.avatar);
     if (p?.name && p.avatar && (demo || p.guestId)) join(p.name, p.avatar);
@@ -99,7 +148,8 @@ export function RoomClient({ code, roomName, sport, demo }: { code: string; room
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (phase === "room" && session) return <RoomView session={session} roomName={currentName} sport={asSport(sport)} notice={notice} />;
+  if (phase === "room" && session)
+    return <RoomView session={session} roomName={currentName} sport={asSport(sport)} isTry={kind === "try"} second={second} notice={notice} />;
 
   return (
     <main className="floodlight flex flex-1 flex-col items-center justify-center px-4 py-10">
@@ -132,9 +182,24 @@ export function RoomClient({ code, roomName, sport, demo }: { code: string; room
   );
 }
 
-function RoomView({ session, roomName, sport, notice }: { session: RoomSession; roomName: string; sport: Sport; notice: string | null }) {
+function RoomView({
+  session,
+  roomName,
+  sport,
+  isTry,
+  second,
+  notice,
+}: {
+  session: RoomSession;
+  roomName: string;
+  sport: Sport;
+  isTry: boolean;
+  second: boolean;
+  notice: string | null;
+}) {
   const params = useSearchParams();
   const [prefs] = useState(() => {
+    if (second) return { lagMs: TV_SOURCE.seconds * 1000, source: TV_SOURCE.id as string, first: false };
     const saved = loadRoomPrefs(session.code);
     const devLag = session.demo ? Number(params.get("lag")) : NaN; // ?lag=25 (seconds), demo only
     if (Number.isFinite(devLag) && params.get("lag") !== null) return { lagMs: devLag * 1000, source: "custom", first: false };
@@ -211,7 +276,21 @@ function RoomView({ session, roomName, sport, notice }: { session: RoomSession; 
         </p>
       )}
 
-      {empty ? (
+      {isTry && (
+        <TryPanel
+          guestId={session.guestId}
+          code={session.code}
+          anchors={room.anchors}
+          lagMs={room.lagMs}
+          clockOffset={room.clockOffset}
+          lockedCount={room.lockedCount}
+          pending={room.pending}
+          heldBack={room.heldBack}
+          ready={room.ready}
+        />
+      )}
+
+      {empty && !isTry ? (
         <section className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
           <h2 className="font-display text-4xl">{t.empty.title}</h2>
           <p className="max-w-xs text-muted">{t.empty.body}</p>
@@ -221,7 +300,7 @@ function RoomView({ session, roomName, sport, notice }: { session: RoomSession; 
         <ChatTimeline items={room.view} clockOffset={room.clockOffset} announce={room.announce} onSpoil={room.spoil} />
       )}
 
-      {!session.demo && <FeedbackPrompt guestId={session.guestId} roomCode={session.code} />}
+      {!session.demo && !isTry && <FeedbackPrompt guestId={session.guestId} roomCode={session.code} />}
       {!soundOn && !muted && room.ready && (
         <button onClick={unlockSound} className="mx-auto mb-1 rounded-full border border-line bg-surface-2 px-3 py-1 text-xs text-muted">
           {t.roar.soundOn}

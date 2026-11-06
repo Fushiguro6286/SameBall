@@ -21,7 +21,7 @@ async function getStats(): Promise<Counts> {
   const res = await db().execute(sql`
     select
       (select count(distinct user_id) from events where name = 'joined' and not is_test)::int as users,
-      (select count(*) from rooms r join profiles p on p.id = r.created_by where not p.is_test and not p.is_bot)::int as rooms,
+      (select count(*) from rooms r join profiles p on p.id = r.created_by where not p.is_test and not p.is_bot and r.kind = 'room')::int as rooms,
       (select count(*) from events where name = 'message_sent' and not is_test)::int as messages,
       (select count(*) from events where name = 'revealed_on_time' and not is_test)::int as spoilers,
       (select count(*) from events where name = 'roar_sent' and not is_test)::int as roars

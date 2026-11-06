@@ -84,12 +84,12 @@ export async function issueToken(userId: string, name: string): Promise<string> 
   return result.accessToken;
 }
 
-export async function createGroup(channelId: string, name: string, owner: string) {
+export async function createGroup(channelId: string, name: string, owner: string, extraMembers: string[] = []) {
   await ncCall("/v4/group-channel/create", {
     channelId,
     name: name.slice(0, 64),
     owner,
-    userIds: [owner],
+    userIds: [owner, ...extraMembers],
     permissions: { joinPerm: 1 }, // anyone with the link can join
   });
 }

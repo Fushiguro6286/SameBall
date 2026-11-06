@@ -75,6 +75,15 @@ export const ClientErrorReq = z.object({
   url: z.string().max(500).optional(),
 });
 
+export const TryReq = z.object({
+  guestId: guestId.optional(),
+  name: displayName.optional(),
+  avatar: avatar.optional(),
+  test: z.boolean().optional(),
+});
+export const TryActionReq = z.object({ guestId, code: roomCode });
+export const TryStepReq = z.object({ guestId, code: roomCode, step: z.number().int().min(0).max(30) });
+
 export const DeleteDataReq = z.object({ guestId });
 
 export const textMessage = z.string().trim().min(1).max(MESSAGE_MAX);

@@ -16,9 +16,14 @@ export default function Home() {
 
         <HeroPhones />
 
-        <a href="#create" className="rounded-full bg-accent px-8 py-3.5 text-lg font-semibold text-accent-ink">
-          {t.landing.createRoom}
-        </a>
+        <div className="flex flex-wrap justify-center gap-3">
+          <Link href="/try" className="rounded-full bg-accent px-7 py-3.5 text-lg font-semibold text-accent-ink">
+            {t.landing.tryIt}
+          </Link>
+          <a href="#create" className="rounded-full border border-accent/60 px-7 py-3.5 text-lg font-semibold text-accent">
+            {t.landing.createRoom}
+          </a>
+        </div>
 
         <section aria-labelledby="how" className="w-full">
           <h2 id="how" className="mb-3 font-display text-3xl">

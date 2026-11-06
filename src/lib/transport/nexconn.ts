@@ -59,8 +59,19 @@ const toRaw = (m: NcMessage): RawMsg => ({
   type: m.messageType,
   senderId: m.senderUserId,
   sentTime: m.sentTime,
-  content: (m.content ?? {}) as Record<string, unknown>,
+  content: parseContent(m.content),
 });
+
+/** Server-API custom messages could arrive as a JSON string; never drop them for that. */
+function parseContent(c: unknown): Record<string, unknown> {
+  if (typeof c !== "string") return (c ?? {}) as Record<string, unknown>;
+  try {
+    const v = JSON.parse(c);
+    return v && typeof v === "object" ? v : {};
+  } catch {
+    return {};
+  }
+}
 
 // Client-wide limit is 5 messages/s across all channels; space sends 250 ms apart.
 let sendChain: Promise<unknown> = Promise.resolve();

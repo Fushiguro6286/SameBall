@@ -28,10 +28,15 @@ export function isTestBrowser(): boolean {
 }
 
 export const startSession = async (req: SessionReq) =>
-  SessionRes.parse(await post("/api/session", { ...req, test: isTestBrowser() || undefined }));
+  SessionRes.parse(await post("/api/session", { ...req, test: req.test || isTestBrowser() || undefined }));
 
 export const createRoomApi = (req: { guestId: string; roomName: string; sport: string }) =>
   post<{ code: string; channelId: string; name: string; sport: string }>("/api/rooms", req);
+
+export const startTryApi = (req: { guestId?: string; name?: string; avatar?: string }) =>
+  post<{ guestId: string; name: string; avatar: string; code: string }>("/api/try", { ...req, test: isTestBrowser() || undefined });
+export const tryStartApi = (guestId: string, code: string) => post<{ ok: true }>("/api/try/start", { guestId, code });
+export const tryStepApi = (guestId: string, code: string, step: number) => post<{ ok: true }>("/api/try/step", { guestId, code, step });
 
 export function errorText(e: unknown): string {
   if (e instanceof ApiError) {

@@ -6,7 +6,7 @@ import { fetchServerTime } from "../client/api";
 import { track } from "../client/metrics";
 import { saveRoomPrefs } from "../client/storage";
 import { measureOffset } from "../timing/clock";
-import { revealAt, type ChatMsg } from "../timing/engine";
+import { matchTime, revealAt, type ChatMsg } from "../timing/engine";
 import type { Pending } from "../timing/hype";
 import { RoomStore, type ViewItem } from "../timing/room-store";
 import { createLocalTransport } from "../transport/local";
@@ -24,6 +24,8 @@ export interface RoomSession {
   token?: string;
   appKey?: string;
   area?: string;
+  /** Second-screen windows don't overwrite this browser's saved lag. */
+  ephemeral?: boolean;
 }
 
 export type RoomStatus = ConnState | "failed";
@@ -35,8 +37,27 @@ interface Snapshot {
   lockedCount: number;
   lagMs: number;
   pending: Pending[];
+  anchors: Anchor[];
 }
-const snapshot = (st: RoomStore): Snapshot => ({ view: st.view(), lockedCount: st.lockedCount(), lagMs: st.effectiveLag(), pending: st.pending() });
+/** Anchors are schedule markers ("First ball"), not chat content, so they are readable even while locked. */
+export interface Anchor {
+  id: string;
+  label: string;
+  matchTime: number;
+  senderId: string;
+}
+const anchorsOf = (st: RoomStore): Anchor[] =>
+  st
+    .all()
+    .filter((m) => m.kind === "anchor")
+    .map((m) => ({ id: m.id, label: String(m.payload?.label ?? ""), matchTime: matchTime(m), senderId: m.senderId }));
+const snapshot = (st: RoomStore): Snapshot => ({
+  view: st.view(),
+  lockedCount: st.lockedCount(),
+  lagMs: st.effectiveLag(),
+  pending: st.pending(),
+  anchors: anchorsOf(st),
+});
 
 /** A roar that just reached my screen. */
 export interface RoarHit {
@@ -58,7 +79,8 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
   const sourceRef = useRef(initialSource);
   const lagTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const emitRoarsRef = useRef<(msgs: ChatMsg[]) => void>(() => {});
-  const [snap, setSnap] = useState<Snapshot>({ view: [], lockedCount: 0, lagMs: initialLagMs, pending: [] });
+  const [snap, setSnap] = useState<Snapshot>({ view: [], lockedCount: 0, lagMs: initialLagMs, pending: [], anchors: [] });
+  const [heldBack, setHeldBack] = useState(0);
   const [status, setStatus] = useState<RoomStatus>("connecting");
   const [attempt, setAttempt] = useState(0);
   const [ready, setReady] = useState(false);
@@ -84,6 +106,10 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
       onLocked: (m) => m.kind === "text" && track("message_locked", s.code),
       onRevealed: (msgs, how) => {
         for (const m of msgs) if (m.kind === "text") track(how === "spoil" ? "spoil_me" : "revealed_on_time", s.code);
+        if (how === "schedule") {
+          const held = msgs.filter((m) => m.kind === "text" && m.senderId !== s.guestId).length;
+          if (held && !disposed) setHeldBack((n) => n + held);
+        }
         noteVisible(msgs);
         if (how === "schedule") emitRoars(msgs);
       },
@@ -223,7 +249,7 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
       store.setLag(ms);
       sourceRef.current = source;
       const lag = store.effectiveLag();
-      saveRoomPrefs(s.code, { lagMs: lag, source });
+      if (!s.ephemeral) saveRoomPrefs(s.code, { lagMs: lag, source });
       // Debounced so dragging the slider doesn't flood the room (client limit is 5 msg/s).
       if (lagTimer.current) clearTimeout(lagTimer.current);
       lagTimer.current = setTimeout(() => {
@@ -240,10 +266,11 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
         track("lag_set", s.code, { source: sourceRef.current, lagS: Math.round(st.effectiveLag() / 1000) });
       }, 800);
     },
-    [s.code, s.name, s.avatar],
+    [s.code, s.name, s.avatar, s.ephemeral],
   );
 
   return {
+    heldBack,
     ready,
     status,
     retry: () => setAttempt((a) => a + 1),

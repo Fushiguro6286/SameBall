@@ -26,7 +26,9 @@ export const rooms = pgTable(
     standIndex: integer("stand_index").notNull().default(0),
     memberCount: integer("member_count").notNull().default(0),
     featured: boolean("featured").notNull().default(false),
-    startsAt: timestamp("starts_at", { withTimezone: true }),
+    startsAt: timestamp("starts_at", { withTimezone: true }), // scheduled start; for Judge Mode rooms, the first ball
+    kind: text("kind").notNull().default("room"), // "room" | "try" (Judge Mode demo)
+    trySteps: integer("try_steps").notNull().default(0), // bitmask of Judge Mode bot steps already sent
     createdAt: ts("created_at"),
   },
   (t) => [index("rooms_parent_idx").on(t.parentCode)],

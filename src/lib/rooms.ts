@@ -21,12 +21,15 @@ export async function createRoom(opts: {
   owner: string;
   parentCode?: string;
   standIndex?: number;
+  kind?: "room" | "try";
+  /** Extra Nexconn members (Judge Mode bots). Not counted as room members. */
+  extraMembers?: string[];
 }): Promise<Room> {
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = randomCode();
     const channelId = `sb${code}`; // letters and digits only; Nexconn rejects some special characters
     if (await getRoom(code)) continue;
-    await createGroup(channelId, opts.name, opts.owner);
+    await createGroup(channelId, opts.name, opts.owner, opts.extraMembers);
     const [room] = await db()
       .insert(rooms)
       .values({
@@ -38,6 +41,7 @@ export async function createRoom(opts: {
         parentCode: opts.parentCode ?? null,
         standIndex: opts.standIndex ?? 0,
         memberCount: 1,
+        kind: opts.kind ?? "room",
       })
       .returning();
     await db().insert(roomMembers).values({ roomCode: code, userId: opts.owner }).onConflictDoNothing();
@@ -46,7 +50,7 @@ export async function createRoom(opts: {
   throw new Error("could not allocate a room code");
 }
 
-async function isMember(code: string, userId: string) {
+export async function isMember(code: string, userId: string) {
   const [m] = await db()
     .select({ u: roomMembers.userId })
     .from(roomMembers)
