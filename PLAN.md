@@ -46,7 +46,7 @@ Note: the docs say `result.status` is a number, but the live API returned the st
 ## Open questions for you
 
 1. ~~Data center~~: answered, Singapore (`NEXCONN_AREA=SG`).
-2. Please turn on these Console settings: **pre-join history for new members**, **profanity filter**, the **Webhooks** URL (once deployed), and if offered, **"Subscribe to user online status"** (optional).
-3. ~~Vercel team~~: project `sameball` created and linked under the only team. A production deploy still needs your approval.
-4. **GitHub:** which repo name and account should I push the public repo to?
+2. Console: pre-join history is on for **Community** Channels (screenshot). **Still check the same switch under Group Channels**, which our rooms use. The Webhooks URL `https://sameball.vercel.app/api/nexconn/webhook` comes in P1. "Subscribe to user online status" is optional.
+3. ~~Vercel~~: live at https://sameball.vercel.app (project `sameball`).
+4. ~~GitHub~~: https://github.com/Fushiguro6286/SameBall (public).
 5. ~~Neon~~: provisioned via Vercel Marketplace (`sameball-db`, Postgres 18), connected to the `sameball` project; `DATABASE_URL` is in `.env.local`.
