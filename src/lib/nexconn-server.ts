@@ -119,6 +119,23 @@ export async function sendGroupMessage(fromUserId: string, channelId: string, me
   });
 }
 
+// Community channels (stadiums): up to 10,000 members; each public sub-channel is a "stand".
+// Every member receives every public sub-channel, so clients filter by sub-channel id.
+
+export async function createCommunity(channelId: string, name: string, owner: string, stands: readonly string[]) {
+  await ncCall("/v4/community-channel/create", { userId: owner, channelId, name: name.slice(0, 64) });
+  for (const subchannelId of stands) await ncCall("/v4/community-channel/subchannel/create", { channelId, subchannelId, channelVisibility: 0 });
+}
+
+/** Idempotent: joining again returns success. */
+export async function joinCommunity(channelId: string, userId: string) {
+  await ncCall("/v4/community-channel/join", { userId, channelId });
+}
+
+export async function sendCommunityMessage(fromUserId: string, channelId: string, subchannelId: string, messageType: string, content: object) {
+  await ncCall("/v4/community-channel/message/send", { fromUserId, toChannelIds: [channelId], subchannelId, messageType, content: JSON.stringify(content) });
+}
+
 /** Client-side config the browser needs (no secrets). */
 export function clientConfig() {
   return { appKey: env("NEXCONN_APP_KEY"), area: process.env.NEXCONN_AREA ?? "SG" };

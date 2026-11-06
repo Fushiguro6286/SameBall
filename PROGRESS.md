@@ -55,6 +55,12 @@ Judge Mode API (create, join, start idempotent, steps once/early 425/non-member 
   - Provider in `.env.local`: **Groq**, `openai/gpt-oss-120b` with `openai/gpt-oss-20b` fallback (picked after comparing on a sample chat: 120b was accurate and ignored a planted "say the match is over" line; Qwen 3.8 misattributed messages). ~1.5 s per summary.
   - Tested: unit tests (spoiler filter, prompt, bullet parsing); route: bad key 401, future messages dropped server-side, provider 403 → clean 502, a local fake provider confirmed the spoiler never reaches the prompt; **live end to end** in test room H5D4ZH (real Nexconn + Groq, test-flagged user "Claude Test"): menu item → 3 accurate bullets.
   - **Your Gemini key can't generate**: Google answers "free tier is not available for this project, set up billing". It's saved in `.env.local` but don't put it in Vercel unless billing is on, or the button shows and always fails.
+- **Big public stadiums**, behind `NEXT_PUBLIC_FEATURE_STADIUMS=1` (gates creation; existing stadiums keep working). Admin → "Create stadium" makes a featured room on a Nexconn **community channel** (up to 10,000 members, no overflow rooms) owned by the host bot, with three public sub-channels as stands: North, South, East. Room kind `stadium`.
+  - Each fan lands in a stand picked from their guest id (spreads the crowd), can switch from a row of stand buttons under the header; the choice is saved per browser. The lag setting is shared across stands.
+  - Community members receive every public sub-channel, so the client keeps only messages for its own stand. History and sending use `CommunitySubChannel`. Anchors are posted to every stand. Webhook now accepts community messages (channel type 10) too. A full stadium returns "This stadium is full right now."
+  - Home page and admin list show a "🏟️ Stadium" label.
+  - Tested **live** (real Nexconn, test-flagged user) in test stadium Z9VNW3 (unfeatured afterwards): creation made the community and 3 stands; auto-join landed in East with the Kick-off anchor from history; a server message to South didn't show in East while one to East did; switching to South loaded its history (no East message, anchor present); a message typed in South stayed out of North and came back from history.
+  - Nexconn keeps community history 7 days by default (groups: 180), so a Ghost Crowd replay of a stadium works for a week unless retention is raised in the Console.
 - Fixes found while testing: countdowns could show a stale time for one second after a quiet period (`useNow` now ticks immediately); anchor senders (the host bot) no longer count as room members on the leaderboard or the wave.
 
 ## Next
@@ -71,5 +77,5 @@ Judge Mode API (create, join, start idempotent, steps once/early 425/non-member 
 - Clock offset is measured against our server; message times come from Nexconn's server. Both are NTP-synced, so the error should be tens of ms.
 - Nexconn error `2007`: a dev-mode app caps registered users at 100. Each guest, bot and Judge Mode second window counts. Check your app's environment in the Console before inviting real users.
 - The dev server sometimes keeps stale modules after edits (Turbopack on Windows); restart it if an API behaves like old code.
-- Test rooms created during P1 checks (all by test users, excluded from /stats): 27299A (try), H5D4ZH, UA6F4H, VYQTGE, C7QAHC.
+- Test rooms created during P1 checks (all by test users, excluded from /stats): 27299A (try), H5D4ZH, UA6F4H, VYQTGE, C7QAHC, Z9VNW3 (stadium).
 - Removed members still count toward `member_count` (overflow happens slightly early). Harmless at our scale.

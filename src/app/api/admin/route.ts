@@ -1,5 +1,6 @@
-import { desc, eq } from "drizzle-orm";
-import { postAnchor, isAdmin } from "@/lib/admin";
+import { desc, eq, inArray } from "drizzle-orm";
+import { createStadium, postAnchor, isAdmin } from "@/lib/admin";
+import { FEATURES } from "@/lib/config";
 import { AdminReq } from "@/lib/api-schemas";
 import { db, rooms } from "@/lib/db";
 import { clientIp, rateLimit } from "@/lib/guard";
@@ -13,9 +14,9 @@ export async function GET(req: Request) {
   const denied = guard(req);
   if (denied) return denied;
   const list = await db()
-    .select({ code: rooms.code, name: rooms.name, sport: rooms.sport, members: rooms.memberCount, featured: rooms.featured, startsAt: rooms.startsAt, createdAt: rooms.createdAt })
+    .select({ code: rooms.code, name: rooms.name, sport: rooms.sport, kind: rooms.kind, members: rooms.memberCount, featured: rooms.featured, startsAt: rooms.startsAt, createdAt: rooms.createdAt })
     .from(rooms)
-    .where(eq(rooms.kind, "room"))
+    .where(inArray(rooms.kind, ["room", "stadium"]))
     .orderBy(desc(rooms.createdAt))
     .limit(100);
   return json({ rooms: list });
@@ -26,8 +27,18 @@ export async function POST(req: Request) {
   if (denied) return denied;
   const b = await body(req, AdminReq);
   if (b instanceof Response) return b;
+  if (b.action === "stadium") {
+    if (!FEATURES.stadiums) return fail(404, "not_enabled");
+    try {
+      const room = await createStadium(b.name, b.sport, b.startsAt ? new Date(b.startsAt) : undefined);
+      return json({ ok: true, code: room.code });
+    } catch (e) {
+      console.error("stadium create failed", (e as Error).message);
+      return fail(502, "chat_unavailable");
+    }
+  }
   const room = await getRoom(b.code);
-  if (!room || room.kind !== "room") return fail(404, "room_not_found");
+  if (!room || room.kind === "try") return fail(404, "room_not_found");
   try {
     if (b.action === "feature") await db().update(rooms).set({ featured: b.featured }).where(eq(rooms.code, b.code));
     else await postAnchor(room, b.label, Math.round(b.lagS * 1000));

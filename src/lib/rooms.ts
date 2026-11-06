@@ -2,8 +2,8 @@ import "server-only";
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { db, roomMembers, rooms } from "./db";
 import { randomCode } from "./guard";
-import { ROOM_CAP, type Sport } from "./config";
-import { createGroup, joinGroup } from "./nexconn-server";
+import { ROOM_CAP, STADIUM_CAP, STADIUM_STANDS, type Sport } from "./config";
+import { createCommunity, createGroup, joinCommunity, joinGroup } from "./nexconn-server";
 
 export type Room = typeof rooms.$inferSelect;
 
@@ -21,7 +21,8 @@ export async function createRoom(opts: {
   owner: string;
   parentCode?: string;
   standIndex?: number;
-  kind?: "room" | "try";
+  kind?: "room" | "try" | "stadium";
+  featured?: boolean;
   startsAt?: Date;
   /** Extra Nexconn members (Judge Mode bots). Not counted as room members. */
   extraMembers?: string[];
@@ -30,7 +31,8 @@ export async function createRoom(opts: {
     const code = randomCode();
     const channelId = `sb${code}`; // letters and digits only; Nexconn rejects some special characters
     if (await getRoom(code)) continue;
-    await createGroup(channelId, opts.name, opts.owner, opts.extraMembers);
+    if (opts.kind === "stadium") await createCommunity(channelId, opts.name, opts.owner, STADIUM_STANDS);
+    else await createGroup(channelId, opts.name, opts.owner, opts.extraMembers);
     const [room] = await db()
       .insert(rooms)
       .values({
@@ -44,6 +46,7 @@ export async function createRoom(opts: {
         memberCount: 1,
         kind: opts.kind ?? "room",
         startsAt: opts.startsAt ?? null,
+        featured: opts.featured ?? false,
       })
       .returning();
     await db().insert(roomMembers).values({ roomCode: code, userId: opts.owner }).onConflictDoNothing();
@@ -85,6 +88,13 @@ export async function joinRoom(code: string, userId: string, depth = 0): Promise
   const room = await getRoom(code);
   if (!room) throw new Error("room not found");
   if (await isRemoved(room.code, userId)) throw new Error("removed");
+  if (room.kind === "stadium") {
+    // No overflow: a community holds 10,000; stands are sub-channels inside it.
+    if (room.memberCount >= STADIUM_CAP && !(await isMember(room.code, userId))) throw new Error("full");
+    await joinCommunity(room.channelId, userId);
+    await recordMember(room, userId);
+    return room;
+  }
   if (await isMember(room.code, userId)) {
     await joinGroup(room.channelId, userId); // idempotent; repairs drift if Nexconn lost the membership
     return room;

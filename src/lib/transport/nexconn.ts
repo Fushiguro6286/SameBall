@@ -73,6 +73,8 @@ function parseContent(c: unknown): Record<string, unknown> {
   }
 }
 
+const subOf = (m: NcMessage) => (m.channelIdentifier as { subChannelId?: string } | undefined)?.subChannelId || undefined;
+
 // Client-wide limit is 5 messages/s across all channels; space sends 250 ms apart.
 let sendChain: Promise<unknown> = Promise.resolve();
 function queued<T>(fn: () => Promise<T>): Promise<T> {
@@ -81,13 +83,14 @@ function queued<T>(fn: () => Promise<T>): Promise<T> {
   return run;
 }
 
-export function createNexconnTransport(opts: { appKey: string; area: string; token: string; userId: string; channelId: string }): Transport {
+/** With `subChannelId` the room is a stadium stand: a sub-channel of a community channel. */
+export function createNexconnTransport(opts: { appKey: string; area: string; token: string; userId: string; channelId: string; subChannelId?: string }): Transport {
   const cleanups: (() => void)[] = [];
-  let channel: InstanceType<Sdk["GroupChannel"]> | null = null;
+  let channel: InstanceType<Sdk["GroupChannel"]> | InstanceType<Sdk["CommunitySubChannel"]> | null = null;
 
   const ready = async () => {
     const sdk = await loadSdk(opts.appKey, opts.area);
-    channel ??= new sdk.GroupChannel(opts.channelId);
+    channel ??= opts.subChannelId ? new sdk.CommunitySubChannel(opts.channelId, opts.subChannelId) : new sdk.GroupChannel(opts.channelId);
     return { sdk, channel };
   };
 
@@ -141,7 +144,8 @@ export function createNexconnTransport(opts: { appKey: string; area: string; tok
 
     onMessages(cb) {
       const f = (msgs: NcMessage[]) => {
-        const mine = msgs.filter((m) => m.channelIdentifier?.channelId === opts.channelId).map(toRaw);
+        // Community members receive every public sub-channel, so a stand keeps only its own.
+        const mine = msgs.filter((m) => m.channelIdentifier?.channelId === opts.channelId && subOf(m) === opts.subChannelId).map(toRaw);
         if (mine.length) cb(mine);
       };
       msgSubs.add(f);

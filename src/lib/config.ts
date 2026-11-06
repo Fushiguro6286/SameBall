@@ -32,6 +32,11 @@ export const NUDGE_LATE_S = -3;
 
 /** Free-plan group channel size we design for; full rooms overflow into "Stand B", "Stand C"... */
 export const ROOM_CAP = 300;
+/** Stadiums are Nexconn community channels (up to 10,000 members); stands are public sub-channels. */
+export const STADIUM_CAP = 10_000;
+export const STADIUM_STANDS = ["north", "south", "east"] as const;
+export type StandId = (typeof STADIUM_STANDS)[number];
+export const asStand = (s: string | null | undefined): StandId | null => ((STADIUM_STANDS as readonly string[]).includes(s ?? "") ? (s as StandId) : null);
 export const NAME_MAX = 30;
 export const ROOM_NAME_MAX = 60;
 export const MESSAGE_MAX = 500;
@@ -48,4 +53,5 @@ export const FEATURES = {
   wave: process.env.NEXT_PUBLIC_FEATURE_WAVE === "1",
   autoCalibration: process.env.NEXT_PUBLIC_FEATURE_AUTO_CALIBRATION === "1",
   aiCatchup: process.env.NEXT_PUBLIC_FEATURE_AI_CATCHUP === "1",
+  stadiums: process.env.NEXT_PUBLIC_FEATURE_STADIUMS === "1",
 };

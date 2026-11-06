@@ -208,6 +208,13 @@ export const en = {
     join: "Join",
   },
 
+  stadium: {
+    badge: "🏟️ Stadium",
+    stands: "Stands",
+    names: { north: "North Stand", south: "South Stand", east: "East Stand" } as Record<string, string>,
+    full: "This stadium is full right now.",
+  },
+
   admin: {
     title: "Admin",
     token: "Admin token",
@@ -218,6 +225,9 @@ export const en = {
     anchorLabel: "Anchor label (e.g. Kick-off)",
     anchorLag: "Your feed delay (s)",
     denied: "Wrong token, or admin is not set up.",
+    stadiumName: "Stadium name (e.g. IND vs AUS Final)",
+    createStadium: "Create stadium",
+    stadiumCreated: (code: string) => `Stadium created: ${code}`,
   },
 
   sync: {

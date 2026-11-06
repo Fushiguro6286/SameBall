@@ -25,8 +25,8 @@ import { ProfileFields } from "@/components/ProfileFields";
 import { Sheet } from "@/components/Sheet";
 import { errorText, startSession } from "@/lib/client/api";
 import { setMetricsUser, track } from "@/lib/client/metrics";
-import { loadBlocked, loadProfile, loadRoomPrefs, loadSetting, rememberRoom, saveBlocked, saveProfile, saveSetting } from "@/lib/client/storage";
-import { AVATARS, FEATURES, LAG_SOURCES, QUICK_CHIPS, asSport, type Sport } from "@/lib/config";
+import { loadBlocked, loadProfile, loadRoomPrefs, loadSetting, loadStand, rememberRoom, saveBlocked, saveProfile, saveSetting, saveStand } from "@/lib/client/storage";
+import { AVATARS, FEATURES, LAG_SOURCES, QUICK_CHIPS, asSport, type Sport, STADIUM_STANDS, type StandId } from "@/lib/config";
 import { useNow } from "@/lib/client/useNow";
 import { t } from "@/lib/i18n";
 import { useRoom, type RoomSession } from "@/lib/room/useRoom";
@@ -142,6 +142,7 @@ export function RoomClient({
         appKey: res.appKey,
         area: res.area,
         ephemeral: second,
+        stand: kind === "stadium" ? loadStand(room.code, res.guestId) : undefined,
       });
       setPhase("room");
     } catch (e) {
@@ -171,8 +172,16 @@ export function RoomClient({
   if (phase === "room" && session)
     return (
       <RoomView
-        key={replay ? "replay" : "live"}
+        key={`${replay ? "replay" : "live"}-${session.stand ?? ""}`}
         session={session}
+        onStand={
+          session.stand
+            ? (s) => {
+                saveStand(session.code, s);
+                setSession({ ...session, stand: s });
+              }
+            : undefined
+        }
         roomName={currentName}
         sport={asSport(sport)}
         isTry={kind === "try"}
@@ -227,6 +236,7 @@ function RoomView({
   startsAt,
   ownerId,
   notice,
+  onStand,
 }: {
   session: RoomSession;
   roomName: string;
@@ -238,6 +248,8 @@ function RoomView({
   startsAt?: number;
   ownerId?: string;
   notice: string | null;
+  /** Stadiums only: move to another stand (sub-channel). */
+  onStand?: (s: StandId) => void;
 }) {
   const params = useSearchParams();
   const [prefs] = useState(() => {
@@ -368,6 +380,22 @@ function RoomView({
           ⋯
         </button>
       </header>
+
+      {onStand && (
+        <nav aria-label={t.stadium.stands} className="flex items-center gap-2 overflow-x-auto border-b border-line px-3 py-2 text-sm">
+          <span className="shrink-0 text-muted">{t.stadium.badge}</span>
+          {STADIUM_STANDS.map((s) => (
+            <button
+              key={s}
+              onClick={() => s !== session.stand && onStand(s)}
+              aria-pressed={s === session.stand}
+              className={`shrink-0 rounded-full px-3 py-1 ${s === session.stand ? "bg-accent font-semibold text-accent-ink" : "border border-line"}`}
+            >
+              {t.stadium.names[s]}
+            </button>
+          ))}
+        </nav>
+      )}
 
       {notice && (
         <p role="status" className="bg-surface-2 px-4 py-2 text-center text-sm">

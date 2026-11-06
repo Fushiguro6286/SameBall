@@ -32,12 +32,13 @@ export async function POST(req: Request) {
       issueToken(guestId, b.name),
       b.roomCode
         ? joinRoom(b.roomCode, guestId).catch((e: Error) =>
-            e.message === "room not found" ? null : e.message === "removed" ? ("removed" as const) : Promise.reject(e),
+            e.message === "room not found" ? null : e.message === "removed" || e.message === "full" ? (e.message as "removed" | "full") : Promise.reject(e),
           )
         : undefined,
     ]);
     if (room === null) return fail(404, "room_not_found");
     if (room === "removed") return fail(403, "removed");
+    if (room === "full") return fail(409, "room_full");
     return json({
       guestId,
       key: guestKey(guestId),

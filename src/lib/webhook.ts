@@ -23,6 +23,7 @@ export interface NcRow {
 }
 
 const GROUP = 3;
+const COMMUNITY = 10; // stadiums
 const OURS = new Set<string>([TEXT_TYPE, ...Object.values(SB_TYPES)]);
 
 function json(s: unknown): Record<string, unknown> | null {
@@ -46,14 +47,14 @@ export function lagOf(messageType: string, content: string | undefined): number 
   return typeof c.lag === "number" && Number.isFinite(c.lag) ? Math.round(c.lag) : null;
 }
 
-/** Group-channel messages of our own types; anything else (or malformed) is skipped. */
+/** Group- and community-channel messages of our own types; anything else (or malformed) is skipped. */
 export function parseWebhook(body: unknown): NcRow[] {
   const env = Envelope.safeParse(body);
   if (!env.success || env.data.type !== "message:send") return [];
   const rows: NcRow[] = [];
   for (const raw of env.data.data) {
     const it = Item.safeParse(raw);
-    if (!it.success || it.data.channelType !== GROUP || !OURS.has(it.data.messageType)) continue;
+    if (!it.success || (it.data.channelType !== GROUP && it.data.channelType !== COMMUNITY) || !OURS.has(it.data.messageType)) continue;
     rows.push({
       messageId: it.data.messageId,
       userId: it.data.userId,

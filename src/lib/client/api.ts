@@ -66,6 +66,7 @@ export function errorText(e: unknown): string {
     if (e.code === "chat_unavailable") return t.errors.chat;
     if (e.code === "room_not_found") return t.room.notFound;
     if (e.code === "removed") return t.mod.removedYou;
+    if (e.code === "room_full") return t.stadium.full;
   }
   return t.errors.generic;
 }

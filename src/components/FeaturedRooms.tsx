@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { connection } from "next/server";
 import { db, rooms } from "@/lib/db";
 import { t } from "@/lib/i18n";
@@ -7,9 +7,9 @@ import { t } from "@/lib/i18n";
 /** Featured rooms (set in /admin), so new visitors can drop straight into a live match room. */
 async function loadFeatured() {
   const list = await db()
-    .select({ code: rooms.code, name: rooms.name, sport: rooms.sport, startsAt: rooms.startsAt })
+    .select({ code: rooms.code, name: rooms.name, sport: rooms.sport, kind: rooms.kind, startsAt: rooms.startsAt })
     .from(rooms)
-    .where(and(eq(rooms.featured, true), eq(rooms.kind, "room")))
+    .where(and(eq(rooms.featured, true), inArray(rooms.kind, ["room", "stadium"])))
     .orderBy(sql`${rooms.startsAt} asc nulls first`, asc(rooms.createdAt))
     .limit(6)
     .catch(() => []);
@@ -34,6 +34,7 @@ export async function FeaturedRooms() {
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-semibold">{r.name}</span>
                   <span className="text-sm text-muted">
+                    {r.kind === "stadium" && `${t.stadium.badge} · `}
                     {t.sports[r.sport] ?? r.sport}
                     {!live && r.startsAt && ` · ${t.schedule.startsIn(r.startsAt.getTime() - now)}`}
                   </span>

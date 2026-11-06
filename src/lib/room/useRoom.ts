@@ -28,6 +28,8 @@ export interface RoomSession {
   token?: string;
   appKey?: string;
   area?: string;
+  /** Stadium stand (community sub-channel id); absent for normal rooms. */
+  stand?: string;
   /** Second-screen windows don't overwrite this browser's saved lag. */
   ephemeral?: boolean;
 }
@@ -208,7 +210,7 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     const transport =
       s.demo || !s.token
         ? createLocalTransport({ roomCode: s.code, userId: s.guestId })
-        : createNexconnTransport({ appKey: s.appKey!, area: s.area ?? "SG", token: s.token, userId: s.guestId, channelId: s.channelId });
+        : createNexconnTransport({ appKey: s.appKey!, area: s.area ?? "SG", token: s.token, userId: s.guestId, channelId: s.channelId, subChannelId: s.stand });
     transportRef.current = transport;
 
     const syncClock = async () => {

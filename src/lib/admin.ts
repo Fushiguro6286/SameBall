@@ -1,7 +1,8 @@
 import "server-only";
 import { timingSafeEqual } from "node:crypto";
-import { joinGroup, sendGroupMessage } from "./nexconn-server";
-import type { Room } from "./rooms";
+import { STADIUM_STANDS, type Sport } from "./config";
+import { joinGroup, sendCommunityMessage, sendGroupMessage } from "./nexconn-server";
+import { createRoom, type Room } from "./rooms";
 import { ensureBotUsers } from "./try";
 import { SB_TYPES, sbContent } from "./transport/wire";
 
@@ -21,6 +22,18 @@ export function isAdmin(req: Request): boolean {
 /** An anchor marks a match moment; lag is the admin's own feed delay so its match time is right. */
 export async function postAnchor(room: Room, label: string, lagMs: number) {
   await ensureBotUsers([HOST_BOT]);
+  const content = sbContent("anchor", { lag: lagMs, label, n: HOST_BOT.name, a: HOST_BOT.avatar });
+  if (room.kind === "stadium") {
+    // Anchors are schedule markers, so every stand gets one. The host bot created the community, so it's a member.
+    for (const stand of STADIUM_STANDS) await sendCommunityMessage(HOST_BOT.id, room.channelId, stand, SB_TYPES.anchor, content);
+    return;
+  }
   await joinGroup(room.channelId, HOST_BOT.id);
-  await sendGroupMessage(HOST_BOT.id, room.channelId, SB_TYPES.anchor, sbContent("anchor", { lag: lagMs, label, n: HOST_BOT.name, a: HOST_BOT.avatar }));
+  await sendGroupMessage(HOST_BOT.id, room.channelId, SB_TYPES.anchor, content);
+}
+
+/** A featured public match room on a community channel, owned by the host bot. */
+export async function createStadium(name: string, sport: Sport, startsAt?: Date) {
+  await ensureBotUsers([HOST_BOT]);
+  return createRoom({ name, sport, owner: HOST_BOT.id, kind: "stadium", featured: true, startsAt });
 }

@@ -1,5 +1,7 @@
 // Per-browser conveniences in localStorage. Every access is guarded: storage can be blocked.
 
+import { STADIUM_STANDS, asStand, type StandId } from "../config";
+
 export interface Profile {
   guestId?: string;
   /** Server-issued key that proves this browser owns guestId. */
@@ -42,6 +44,16 @@ export function rememberRoom(r: SavedRoom) {
 
 export const loadRoomPrefs = (code: string) => read<RoomPrefs | null>(`sb-room:${code}`, null);
 export const saveRoomPrefs = (code: string, p: RoomPrefs) => write(`sb-room:${code}`, p);
+
+/** Which stadium stand this browser sits in; defaults to one picked from the guest id so crowds spread out. */
+export function loadStand(code: string, guestId: string): StandId {
+  const saved = asStand(read<string | null>(`sb-stand:${code}`, null));
+  if (saved) return saved;
+  let h = 0;
+  for (const c of guestId) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return STADIUM_STANDS[h % STADIUM_STANDS.length];
+}
+export const saveStand = (code: string, stand: StandId) => write(`sb-stand:${code}`, stand);
 
 /** Per-browser on/off settings: "suspense" (Hype Radar), "muted" (stadium sound). */
 export const loadSetting = (key: string, fallback: boolean) => read<boolean>(`sb-set:${key}`, fallback);
