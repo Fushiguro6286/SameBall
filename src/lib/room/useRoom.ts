@@ -6,7 +6,8 @@ import { fetchServerTime } from "../client/api";
 import { track } from "../client/metrics";
 import { saveRoomPrefs } from "../client/storage";
 import { measureOffset } from "../timing/clock";
-import type { ChatMsg } from "../timing/engine";
+import { revealAt, type ChatMsg } from "../timing/engine";
+import type { Pending } from "../timing/hype";
 import { RoomStore, type ViewItem } from "../timing/room-store";
 import { createLocalTransport } from "../transport/local";
 import { createNexconnTransport } from "../transport/nexconn";
@@ -33,15 +34,31 @@ interface Snapshot {
   view: ViewItem[];
   lockedCount: number;
   lagMs: number;
+  pending: Pending[];
 }
-const snapshot = (st: RoomStore): Snapshot => ({ view: st.view(), lockedCount: st.lockedCount(), lagMs: st.effectiveLag() });
+const snapshot = (st: RoomStore): Snapshot => ({ view: st.view(), lockedCount: st.lockedCount(), lagMs: st.effectiveLag(), pending: st.pending() });
 
-export function useRoom(s: RoomSession, initialLagMs: number, initialSource: string) {
+/** A roar that just reached my screen. */
+export interface RoarHit {
+  id: string;
+  senderId: string;
+  intensity: number;
+  dur: number;
+}
+const ROAR_FRESH_MS = 4000; // older roars (history, late arrivals) stay silent
+
+export function useRoom(s: RoomSession, initialLagMs: number, initialSource: string, onRoar?: (r: RoarHit) => void) {
+  const onRoarRef = useRef(onRoar);
+  useEffect(() => {
+    onRoarRef.current = onRoar;
+  });
+  const playedRef = useRef(new Set<string>());
   const storeRef = useRef<RoomStore | null>(null);
   const transportRef = useRef<Transport | null>(null);
   const sourceRef = useRef(initialSource);
   const lagTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [snap, setSnap] = useState<Snapshot>({ view: [], lockedCount: 0, lagMs: initialLagMs });
+  const emitRoarsRef = useRef<(msgs: ChatMsg[]) => void>(() => {});
+  const [snap, setSnap] = useState<Snapshot>({ view: [], lockedCount: 0, lagMs: initialLagMs, pending: [] });
   const [status, setStatus] = useState<RoomStatus>("connecting");
   const [attempt, setAttempt] = useState(0);
   const [ready, setReady] = useState(false);
@@ -63,21 +80,36 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
       if (document.visibilityState === "hidden") setUnseen((n) => n + others.length);
     };
 
-    const store = new RoomStore(s.guestId, initialLagMs, now, {
+    const store: RoomStore = new RoomStore(s.guestId, initialLagMs, now, {
       onLocked: (m) => m.kind === "text" && track("message_locked", s.code),
       onRevealed: (msgs, how) => {
         for (const m of msgs) if (m.kind === "text") track(how === "spoil" ? "spoil_me" : "revealed_on_time", s.code);
         noteVisible(msgs);
+        if (how === "schedule") emitRoars(msgs);
       },
       onChange: () => !disposed && setSnap(snapshot(store)),
     });
     storeRef.current = store;
+    emitRoarsRef.current = (msgs) => emitRoars(msgs);
+
+    function emitRoars(msgs: ChatMsg[]) {
+      const t = now();
+      const lag = store.effectiveLag();
+      for (const m of msgs) {
+        if (m.kind !== "roar" || playedRef.current.has(m.id)) continue;
+        if (t - (m.senderId === s.guestId ? m.sentTime : revealAt(m, lag)) > ROAR_FRESH_MS) continue;
+        playedRef.current.add(m.id);
+        onRoarRef.current?.({ id: m.id, senderId: m.senderId, intensity: Number(m.payload?.intensity) || 1, dur: Number(m.payload?.dur) || 1500 });
+      }
+    }
 
     const ingest = (raws: RawMsg[]) => {
       const parsed = raws.map(parseIncoming).filter((m): m is ChatMsg => !!m);
       const fresh = parsed.filter((m) => !store.get(m.id));
       store.add(parsed);
-      noteVisible(fresh.filter((m) => store.isRevealed(m.id)));
+      const visible = fresh.filter((m) => store.isRevealed(m.id));
+      noteVisible(visible);
+      emitRoars(visible);
     };
 
     const transport =
@@ -168,6 +200,22 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     [s.code, s.name, s.avatar],
   );
 
+  const sendRoar = useCallback(
+    async (intensity: 1 | 2 | 3, dur: number) => {
+      const store = storeRef.current;
+      const tr = transportRef.current;
+      if (!store || !tr) return;
+      const raw = await tr.sendCustom(SB_TYPES.roar, sbContent("roar", { lag: store.effectiveLag(), intensity, dur, n: s.name, a: s.avatar }));
+      const m = parseIncoming(raw);
+      if (m) {
+        store.add([m]);
+        emitRoarsRef.current([m]);
+      }
+      track("roar_sent", s.code, { intensity });
+    },
+    [s.code, s.name, s.avatar],
+  );
+
   const setLag = useCallback(
     (ms: number, source: string) => {
       const store = storeRef.current;
@@ -205,6 +253,7 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     announce,
     clockOffset,
     sendText,
+    sendRoar,
     setLag,
     spoil: (id: string) => storeRef.current?.spoil(id),
     spoilAll: () => storeRef.current?.spoilAll(),

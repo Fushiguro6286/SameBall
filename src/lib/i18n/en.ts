@@ -62,6 +62,7 @@ export const en = {
     placeholder: "Message your squad…",
     send: "Send",
     sendFailed: "Not sent.",
+    quickChat: "Quick chat",
     retry: "Retry",
     lockedBy: (name: string) => `Message from ${name}, locked`,
     unlocksIn: (s: number) => (s >= 60 ? `unlocks in ${Math.floor(s / 60)}m ${s % 60}s` : `unlocks in ${s}s`),
@@ -94,6 +95,20 @@ export const en = {
     failed: "Couldn't connect to chat.",
     retry: "Retry",
     demo: "DEMO MODE · local tabs only, not Nexconn",
+  },
+
+  roar: {
+    label: "Hold to roar",
+    soundOn: "🔊 Tap to turn on stadium sound",
+    sound: "Stadium sound",
+    soundHelp: "The crowd roars on your phone when the moment reaches your screen.",
+  },
+
+  hype: {
+    coming: (s: number) => `👀 something's coming in ${s}s`,
+    comingSr: "Something's coming soon.",
+    suspense: "Suspense mode",
+    suspenseHelp: "Hype Radar pulses when your squad is reacting to a moment that hasn't reached your screen yet.",
   },
 
   lag: {

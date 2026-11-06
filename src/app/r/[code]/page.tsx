@@ -30,9 +30,9 @@ export default function RoomPage(props: PageProps<"/r/[code]">) {
 async function RoomLoader(props: PageProps<"/r/[code]">) {
   const { code } = await props.params;
   const sp = await props.searchParams;
-  if (isDemo(sp)) return <RoomClient code={code.toUpperCase()} roomName="Demo room" demo />;
+  if (isDemo(sp)) return <RoomClient code={code.toUpperCase()} roomName="Demo room" sport={typeof sp.sport === "string" ? sp.sport : "cricket"} demo />;
   if (!ROOM_CODE_RE.test(code)) notFound();
   const room = await getRoom(code);
   if (!room) notFound();
-  return <RoomClient code={room.code} roomName={room.name} demo={false} />;
+  return <RoomClient code={room.code} roomName={room.name} sport={room.sport} demo={false} />;
 }

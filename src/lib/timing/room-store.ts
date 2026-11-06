@@ -2,6 +2,7 @@
 // Pure TS (no React, no DOM) so the rules can be unit-tested.
 
 import { ChatMsg, clampLag, compareMsgs, isLocked, revealAt } from "./engine";
+import { hypeWeight, type Pending } from "./hype";
 import { RevealScheduler } from "./scheduler";
 
 export interface ViewItem {
@@ -157,6 +158,18 @@ export class RoomStore {
           spoiled: this.spoiled.has(m.id),
         };
       });
+  }
+
+  /** Locked text and roars as numbers only, for Hype Radar. */
+  pending(): Pending[] {
+    const lag = this.effectiveLag();
+    const out: Pending[] = [];
+    for (const m of this.msgs.values()) {
+      if (this.revealed.has(m.id)) continue;
+      const weight = hypeWeight(m);
+      if (weight > 0) out.push({ revealAt: revealAt(m, lag), senderId: m.senderId, weight });
+    }
+    return out;
   }
 
   lockedCount(): number {

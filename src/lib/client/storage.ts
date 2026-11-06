@@ -41,6 +41,10 @@ export function rememberRoom(r: SavedRoom) {
 export const loadRoomPrefs = (code: string) => read<RoomPrefs | null>(`sb-room:${code}`, null);
 export const saveRoomPrefs = (code: string, p: RoomPrefs) => write(`sb-room:${code}`, p);
 
+/** Per-browser on/off settings: "suspense" (Hype Radar), "muted" (stadium sound). */
+export const loadSetting = (key: string, fallback: boolean) => read<boolean>(`sb-set:${key}`, fallback);
+export const saveSetting = (key: string, on: boolean) => write(`sb-set:${key}`, on);
+
 export function clearAll() {
   try {
     Object.keys(localStorage)

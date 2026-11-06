@@ -13,7 +13,18 @@ export type LagSourceId = (typeof LAG_SOURCES)[number]["id"] | "custom";
 export const SPORTS = ["cricket", "football", "f1", "esports", "other"] as const;
 export type Sport = (typeof SPORTS)[number];
 
-export const AVATARS = ["🦁", "🐯", "🦊", "🐼", "🐸", "🦉", "🐙", "🦄", "🐝", "🔥", "⚡", "🎯", "🏏", "⚽", "🏎️", "🎮"] as const;
+/** One-tap quick-chat chips per sport. They send normal text and weigh extra in the Hype score. */
+export const QUICK_CHIPS: Record<Sport, readonly string[]> = {
+  cricket: ["SIX! 🔥", "OUT!! ☝️", "FOUR! 💥", "What a catch!", "DRS?", "Kya shot hai!"],
+  football: ["GOAL!!", "What a save! 🧤", "Offside?", "Red card!", "VAR?", "So close 😱"],
+  f1: ["Overtake!! 🏎️", "Safety car?", "Box box!", "Fastest lap ⚡", "Track limits?", "What a move!"],
+  esports: ["GG!", "Clutch!! 🔥", "ACE!", "What a play!", "Throw?", "Comeback?"],
+  other: ["WOW!! 🔥", "No way!", "Let's go!!", "Unreal 😱", "So close!"],
+};
+export const ALL_CHIPS: ReadonlySet<string> = new Set(Object.values(QUICK_CHIPS).flat());
+export const asSport = (s: string | null | undefined): Sport => (SPORTS as readonly string[]).includes(s ?? "") ? (s as Sport) : "other";
+
+export const AVATARS =["🦁", "🐯", "🦊", "🐼", "🐸", "🦉", "🐙", "🦄", "🐝", "🔥", "⚡", "🎯", "🏏", "⚽", "🏎️", "🎮"] as const;
 
 export const SLIDER_MAX_S = 120;
 export const NUDGE_SPOILED_S = 5;

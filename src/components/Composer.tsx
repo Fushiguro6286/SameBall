@@ -1,10 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { MESSAGE_MAX } from "@/lib/config";
 import { t } from "@/lib/i18n";
 
-export function Composer({ disabled, onSend }: { disabled: boolean; onSend: (text: string) => Promise<void> }) {
+export function Composer({
+  disabled,
+  onSend,
+  chips = [],
+  children,
+}: {
+  disabled: boolean;
+  onSend: (text: string) => Promise<void>;
+  chips?: readonly string[];
+  /** Rendered beside the input (the roar button). */
+  children?: ReactNode;
+}) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
@@ -34,8 +45,23 @@ export function Composer({ disabled, onSend }: { disabled: boolean; onSend: (tex
           </button>
         </div>
       )}
+      {chips.length > 0 && (
+        <div role="group" aria-label={t.room.quickChat} className="no-scrollbar -mx-3 mb-2 flex gap-2 overflow-x-auto px-3">
+          {chips.map((c) => (
+            <button
+              key={c}
+              type="button"
+              disabled={disabled || sending}
+              onClick={() => send(c)}
+              className="shrink-0 rounded-full border border-line bg-surface-2 px-3 py-1.5 text-sm font-semibold active:scale-95 disabled:opacity-40"
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      )}
       <form
-        className="mx-auto flex max-w-xl gap-2"
+        className="mx-auto flex max-w-xl items-center gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           send(text);
@@ -58,10 +84,11 @@ export function Composer({ disabled, onSend }: { disabled: boolean; onSend: (tex
         <button
           type="submit"
           disabled={disabled || sending || !text.trim()}
-          className="rounded-full bg-accent px-5 font-semibold text-accent-ink disabled:opacity-40"
+          className="rounded-full bg-accent px-5 py-3 font-semibold text-accent-ink disabled:opacity-40"
         >
           {t.room.send}
         </button>
+        {children}
       </form>
     </div>
   );

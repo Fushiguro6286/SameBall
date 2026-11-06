@@ -7,14 +7,18 @@ import { ChatTimeline } from "@/components/ChatTimeline";
 import { Composer } from "@/components/Composer";
 import { ConnBanner } from "@/components/ConnBanner";
 import { FeedbackPrompt } from "@/components/FeedbackPrompt";
+import { HypeStrip } from "@/components/HypeStrip";
+import { RoarButton } from "@/components/RoarButton";
+import { Toggle } from "@/components/Toggle";
+import { Crowd } from "@/lib/audio/crowd";
 import { InvitePanel } from "@/components/InvitePanel";
 import { LagSheet } from "@/components/LagSheet";
 import { ProfileFields } from "@/components/ProfileFields";
 import { Sheet } from "@/components/Sheet";
 import { errorText, startSession } from "@/lib/client/api";
 import { setMetricsUser, track } from "@/lib/client/metrics";
-import { loadProfile, loadRoomPrefs, rememberRoom, saveProfile } from "@/lib/client/storage";
-import { AVATARS, LAG_SOURCES } from "@/lib/config";
+import { loadProfile, loadRoomPrefs, loadSetting, rememberRoom, saveProfile, saveSetting } from "@/lib/client/storage";
+import { AVATARS, LAG_SOURCES, QUICK_CHIPS, asSport, type Sport } from "@/lib/config";
 import { t } from "@/lib/i18n";
 import { useRoom, type RoomSession } from "@/lib/room/useRoom";
 
@@ -34,7 +38,7 @@ function demoGuestId(): string {
   }
 }
 
-export function RoomClient({ code, roomName, demo }: { code: string; roomName: string; demo: boolean }) {
+export function RoomClient({ code, roomName, sport, demo }: { code: string; roomName: string; sport: string; demo: boolean }) {
   const router = useRouter();
   const params = useSearchParams();
   const [phase, setPhase] = useState<"init" | "join" | "joining" | "room">("init");
@@ -95,7 +99,7 @@ export function RoomClient({ code, roomName, demo }: { code: string; roomName: s
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (phase === "room" && session) return <RoomView session={session} roomName={currentName} notice={notice} />;
+  if (phase === "room" && session) return <RoomView session={session} roomName={currentName} sport={asSport(sport)} notice={notice} />;
 
   return (
     <main className="floodlight flex flex-1 flex-col items-center justify-center px-4 py-10">
@@ -128,7 +132,7 @@ export function RoomClient({ code, roomName, demo }: { code: string; roomName: s
   );
 }
 
-function RoomView({ session, roomName, notice }: { session: RoomSession; roomName: string; notice: string | null }) {
+function RoomView({ session, roomName, sport, notice }: { session: RoomSession; roomName: string; sport: Sport; notice: string | null }) {
   const params = useSearchParams();
   const [prefs] = useState(() => {
     const saved = loadRoomPrefs(session.code);
@@ -136,7 +140,31 @@ function RoomView({ session, roomName, notice }: { session: RoomSession; roomNam
     if (Number.isFinite(devLag) && params.get("lag") !== null) return { lagMs: devLag * 1000, source: "custom", first: false };
     return saved ? { ...saved, first: false } : { lagMs: DEFAULT_SOURCE.seconds * 1000, source: DEFAULT_SOURCE.id as string, first: true };
   });
-  const room = useRoom(session, prefs.lagMs, prefs.source);
+  const crowd = useRef<Crowd | null>(null);
+  const glowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [glow, setGlow] = useState(0);
+  const [soundOn, setSoundOn] = useState(false);
+  const [muted, setMuted] = useState(() => loadSetting("muted", false));
+  const [suspense, setSuspense] = useState(() => loadSetting("suspense", true));
+  const room = useRoom(session, prefs.lagMs, prefs.source, (r) => {
+    crowd.current ??= new Crowd();
+    const { level, holdMs } = crowd.current.roar(r.intensity, r.senderId, r.dur);
+    setGlow(level);
+    if (glowTimer.current) clearTimeout(glowTimer.current);
+    glowTimer.current = setTimeout(() => setGlow(0), holdMs);
+  });
+  useEffect(
+    () => () => {
+      crowd.current?.close();
+      if (glowTimer.current) clearTimeout(glowTimer.current);
+    },
+    [],
+  );
+  const unlockSound = async () => {
+    crowd.current ??= new Crowd();
+    crowd.current.setMuted(muted);
+    setSoundOn(await crowd.current.unlock());
+  };
   const [source, setSource] = useState(prefs.source);
   const [lagOpen, setLagOpen] = useState(prefs.first);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -194,7 +222,22 @@ function RoomView({ session, roomName, notice }: { session: RoomSession; roomNam
       )}
 
       {!session.demo && <FeedbackPrompt guestId={session.guestId} roomCode={session.code} />}
-      <Composer disabled={!room.ready} onSend={room.sendText} />
+      {!soundOn && !muted && room.ready && (
+        <button onClick={unlockSound} className="mx-auto mb-1 rounded-full border border-line bg-surface-2 px-3 py-1 text-xs text-muted">
+          {t.roar.soundOn}
+        </button>
+      )}
+      {suspense && <HypeStrip pending={room.pending} clockOffset={room.clockOffset} />}
+      <Composer disabled={!room.ready} onSend={room.sendText} chips={QUICK_CHIPS[sport]}>
+        <RoarButton disabled={!room.ready} onStart={() => !soundOn && !muted && unlockSound()} onRoar={(i, d) => room.sendRoar(i, d).catch(() => undefined)} />
+      </Composer>
+
+      {/* Floodlight glow while the crowd roars. Decorative only. */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-40 transition-opacity duration-700"
+        style={{ opacity: glow, boxShadow: "inset 0 0 90px 18px rgba(198,255,61,0.45), inset 0 0 220px 40px rgba(255,255,255,0.12)" }}
+      />
 
       <LagSheet
         open={lagOpen}
@@ -239,6 +282,23 @@ function RoomView({ session, roomName, notice }: { session: RoomSession; roomNam
               {t.room.revealAll} {room.lockedCount > 0 && `(${room.lockedCount})`}
             </button>
           )}
+          <Toggle
+            label={t.hype.suspense}
+            help={t.hype.suspenseHelp}
+            on={suspense}
+            onChange={(v) => (setSuspense(v), saveSetting("suspense", v))}
+          />
+          <Toggle
+            label={t.roar.sound}
+            help={t.roar.soundHelp}
+            on={!muted}
+            onChange={(v) => {
+              setMuted(!v);
+              saveSetting("muted", !v);
+              crowd.current?.setMuted(!v);
+              if (v) unlockSound();
+            }}
+          />
         </div>
       </Sheet>
 
