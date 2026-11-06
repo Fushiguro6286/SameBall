@@ -68,8 +68,15 @@ Judge Mode API (create, join, start idempotent, steps once/early 425/non-member 
   - Tested: unit tests (shape, sample functions, switching); production build in the browser: home, try, 404 and a stadium room in Hindi after a fresh load with no console errors; switching back to English from the room menu.
 - Fixes found while testing: countdowns could show a stale time for one second after a quiet period (`useNow` now ticks immediately); anchor senders (the host bot) no longer count as room members on the leaderboard or the wave.
 
+### Phase 4 (submission docs), Nov 6
+- `README.md` (problem, features, Feature → Nexconn table, Mermaid architecture, setup, how judges test, prior-work statement), `docs/WRITEUP.md` (for the PDF), `docs/DEMO_SCRIPT.md` (2-minute video).
+- The write-up has `<...>` placeholders for things that must be real: App Key, demo video link, `/stats` numbers and screenshots, user quotes, the Judges' room code and its anchor.
+
 ## Next
-- You: phone test of the P1 UI (checklist in chat), Nexconn Console settings below, then Phase 3 (P2).
+- You: fill the write-up placeholders, record the Judges' room on a real match night (Ghost Crowd flag on), record the demo video, export `docs/WRITEUP.md` to PDF.
+- You: turn on the P2 flags in Vercel (`NEXT_PUBLIC_FEATURE_GHOST_CROWD`, `WAVE`, `AUTO_CALIBRATION`, `STADIUMS`, `HINDI`) and redeploy. AI catch-up is already on.
+- Open: Break-time Huddle (needs a card for Call SDK minutes; waiting for your OK).
+- Open from the engineering rules: `scripts/load-test.ts` (50 test users) isn't built. Mind the dev-app cap of 100 registered users (error 2007) before running it.
 
 ## Console settings to switch on (you)
 - Webhooks: URL `https://sameball.vercel.app/api/nexconn/webhook`, event "message send" (leave "Include Server API Messaging" off so bots stay out).
