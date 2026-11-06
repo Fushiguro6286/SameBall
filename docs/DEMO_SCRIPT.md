@@ -37,6 +37,9 @@ On Rahul's phone tap the "🌊 That moment rippled through 2 screens" pill. The 
 Cut to the `/stats` page: users, rooms, spoilers blocked, the daily chart.
 > "Real fans, real rooms, every message delivered by Nexconn. SameBall: the group chat that never spoils the match. Try it alone at sameball.vercel.app/try."
 
+## Optional extra beat (if time allows): Call it
+Before the wicket, Priya opens ⋯ → 🎯 Call it → "Next ball?". Both phones pick. Priya locks picks as the bowler runs in, then taps "It was: OUT". Rahul's phone shows the answer only when the wicket reaches his screen: "You called it!".
+
 ## Shots to grab in case of retakes
 
 - Close-up of a locked bubble with its countdown ring.

@@ -13,6 +13,9 @@ export const SB_TYPES = {
   anchor: "SB:Anchor",
   synccheck: "SB:SyncCheck",
   synctap: "SB:SyncTap",
+  call: "SB:Call",
+  callvote: "SB:CallVote",
+  callresult: "SB:CallResult",
 } as const;
 export type SbKind = keyof typeof SB_TYPES;
 export type SbType = (typeof SB_TYPES)[SbKind];
@@ -30,6 +33,10 @@ export const SbPayloads = {
   anchor: z.object({ ...base, label: z.string().max(40) }),
   synccheck: z.object({ ...base, checkId: z.string().max(32), label: z.string().max(60) }),
   synctap: z.object({ ...base, checkId: z.string().max(32) }),
+  call: z.object({ ...base, callId: z.string().max(32), q: z.string().min(1).max(60), opts: z.array(z.string().min(1).max(16)).min(2).max(5) }),
+  callvote: z.object({ ...base, callId: z.string().max(32), pick: z.number().int().min(0).max(4) }),
+  // answer −1 = "picks locked" (sent before the moment), 0–4 = the option that happened.
+  callresult: z.object({ ...base, callId: z.string().max(32), answer: z.number().int().min(-1).max(4) }),
 } satisfies Record<SbKind, z.ZodType>;
 export type SbPayload<K extends SbKind> = z.infer<(typeof SbPayloads)[K]>;
 

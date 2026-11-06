@@ -55,4 +55,5 @@ export const FEATURES = {
   aiCatchup: process.env.NEXT_PUBLIC_FEATURE_AI_CATCHUP === "1",
   stadiums: process.env.NEXT_PUBLIC_FEATURE_STADIUMS === "1",
   hindi: process.env.NEXT_PUBLIC_FEATURE_HINDI === "1",
+  callIt: process.env.NEXT_PUBLIC_FEATURE_CALL_IT === "1",
 };

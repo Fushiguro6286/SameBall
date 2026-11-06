@@ -68,13 +68,21 @@ Judge Mode API (create, join, start idempotent, steps once/early 425/non-member 
   - Tested: unit tests (shape, sample functions, switching); production build in the browser: home, try, 404 and a stadium room in Hindi after a fresh load with no console errors; switching back to English from the room menu.
 - Fixes found while testing: countdowns could show a stale time for one second after a quiet period (`useNow` now ticks immediately); anchor senders (the host bot) no longer count as room members on the leaderboard or the wave.
 
+### Extra feature: Call it (Nov 6)
+- **Call it**, behind `NEXT_PUBLIC_FEATURE_CALL_IT=1` (`timing/callit.ts`, tested). Room menu → 🎯 Call it: the sport's preset ("Next ball?" Dot / Runs / 4 / 6 / OUT) or a custom yes/no question. New custom types `SB:Call`, `SB:CallVote`, `SB:CallResult`.
+  - Fairness: a pick counts only if its match time (sent time − lag) is before the deadline: the asker's "🔒 Lock picks" (tapped as the bowler runs in), or failing that the answer's match time minus 3 s. So each person's picks close when the moment reaches *their* screen.
+  - Spoiler safety: the question, others' picks, the answer and the points only show once revealed for me. Only the asker can lock/answer (first one wins). Votes don't count toward Hype Radar or "spoilers blocked". Tracks `call_started` / `call_picked`.
+  - Judge Mode: after the FOUR, bot Arjun asks "Ball 4?", both bots pick, he locks before the six and answers after it (steps appended, so earlier step numbers are unchanged).
+  - Tested: unit tests (slow feed counts, late fast pick doesn't, lock, latest pick, hidden until revealed, only the asker answers); **live in Judge Mode** (real Nexconn, dev server, my lag +25 s): question appeared, picked 6, picks locked, then after the six reached my screen "It was 6! You called it! 1 point" with the board You 1 · Meera 1.
+- **Email login: not added, on purpose.** Guest sign-in (tap the link, pick a name) is part of the pitch and keeps the "active users" funnel short; email would add friction and personal data to store. Revisit only if people ask to keep their rooms across devices.
+
 ### Phase 4 (submission docs), Nov 6
 - `README.md` (problem, features, Feature → Nexconn table, Mermaid architecture, setup, how judges test, prior-work statement), `docs/WRITEUP.md` (for the PDF), `docs/DEMO_SCRIPT.md` (2-minute video).
 - The write-up has `<...>` placeholders for things that must be real: App Key, demo video link, `/stats` numbers and screenshots, user quotes, the Judges' room code and its anchor.
 
 ## Next
 - You: fill the write-up placeholders, record the Judges' room on a real match night (Ghost Crowd flag on), record the demo video, export `docs/WRITEUP.md` to PDF.
-- You: turn on the P2 flags in Vercel (`NEXT_PUBLIC_FEATURE_GHOST_CROWD`, `WAVE`, `AUTO_CALIBRATION`, `STADIUMS`, `HINDI`) and redeploy. AI catch-up is already on.
+- Done: all P2 flags and Call it are on in Vercel (production + preview).
 - Open: Break-time Huddle (needs a card for Call SDK minutes; waiting for your OK).
 - Open from the engineering rules: `scripts/load-test.ts` (50 test users) isn't built. Mind the dev-app cap of 100 registered users (error 2007) before running it.
 
@@ -88,6 +96,6 @@ Judge Mode API (create, join, start idempotent, steps once/early 425/non-member 
 - Server-API messages don't appear in the *sender's own* history (no echo). Only affects bots, which never view chat.
 - Clock offset is measured against our server; message times come from Nexconn's server. Both are NTP-synced, so the error should be tens of ms.
 - Nexconn error `2007`: a dev-mode app caps registered users at 100. Each guest, bot and Judge Mode second window counts. Check your app's environment in the Console before inviting real users.
-- The dev server sometimes keeps stale modules after edits (Turbopack on Windows); restart it if an API behaves like old code. Once it got stuck reloading the home page in a loop; a fresh `next dev` fixed it (production was never affected).
+- The dev server sometimes keeps stale modules after edits (Turbopack on Windows); restart it if an API behaves like old code. If a page reloads in a loop in dev, stop the server and delete `.next/dev`: a dev cache built with different `NEXT_PUBLIC_*` flags causes it (production is never affected).
 - Test rooms created during P1 checks (all by test users, excluded from /stats): 27299A (try), H5D4ZH, UA6F4H, VYQTGE, C7QAHC, Z9VNW3 (stadium).
 - Removed members still count toward `member_count` (overflow happens slightly early). Harmless at our scale.

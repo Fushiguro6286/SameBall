@@ -15,6 +15,7 @@ import { LagBoard, useWatching } from "@/components/LagBoard";
 import { LangToggle } from "@/components/Lang";
 import { RoarButton } from "@/components/RoarButton";
 import { StartBanner } from "@/components/StartBanner";
+import { CallCard, CallStartSheet } from "@/components/CallIt";
 import { SyncCheckCard, SyncStartSheet } from "@/components/SyncCheck";
 import { Toggle } from "@/components/Toggle";
 import { TryPanel } from "@/components/TryPanel";
@@ -308,6 +309,7 @@ function RoomView({
   const [menuOpen, setMenuOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [syncOpen, setSyncOpen] = useState(false);
+  const [callOpen, setCallOpen] = useState(false);
   const [confirmAll, setConfirmAll] = useState(false);
   const [waveOpen, setWaveOpen] = useState(false);
   const [catchupOpen, setCatchupOpen] = useState(false);
@@ -460,6 +462,10 @@ function RoomView({
         />
       )}
 
+      {FEATURES.callIt && !replay && (
+        <CallCard call={room.call} board={room.callBoard} myId={session.guestId} onPick={room.pickCall} onAnswer={room.answerCall} />
+      )}
+
       {empty && !isTry ? (
         <section className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
           <h2 className="font-display text-4xl">{t.empty.title}</h2>
@@ -531,6 +537,11 @@ function RoomView({
           >
             {t.room.invite}
           </button>
+          {FEATURES.callIt && !replay && (
+            <button onClick={() => (setMenuOpen(false), setCallOpen(true))} className="rounded-2xl border border-line bg-surface-2 px-4 py-3 text-left">
+              {t.call.menu}
+            </button>
+          )}
           {catchup && session.key && (
             <button onClick={() => (setMenuOpen(false), setCatchupOpen(true))} className="rounded-2xl border border-line bg-surface-2 px-4 py-3 text-left">
               {t.catchup.menu}
@@ -615,6 +626,7 @@ function RoomView({
       )}
 
       <SyncStartSheet open={syncOpen} onClose={() => setSyncOpen(false)} onStart={room.startSyncCheck} />
+      {FEATURES.callIt && <CallStartSheet open={callOpen} onClose={() => setCallOpen(false)} sport={sport} onStart={room.startCall} />}
 
       <Sheet open={inviteOpen} onClose={() => setInviteOpen(false)} title={t.empty.title}>
         <div className="mt-4">{origin && <InvitePanel url={inviteUrl} roomName={roomName} />}</div>

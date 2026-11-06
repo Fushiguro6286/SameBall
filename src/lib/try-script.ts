@@ -31,7 +31,13 @@ export const TRY_END_T = 47;
 
 export type TryStep =
   | { t: number; bot: BotKey; kind: "text"; text: string }
-  | { t: number; bot: BotKey; kind: "roar"; intensity: 1 | 2 | 3 };
+  | { t: number; bot: BotKey; kind: "roar"; intensity: 1 | 2 | 3 }
+  | { t: number; bot: BotKey; kind: "call" }
+  | { t: number; bot: BotKey; kind: "callvote"; pick: number }
+  | { t: number; bot: BotKey; kind: "callresult"; answer: number };
+
+/** The Call it question the bots play before the six (answer −1 = lock picks). */
+export const TRY_CALL = { callId: "tryball4", q: "Ball 4?", opts: ["Dot", "Runs", "4", "6", "OUT"] };
 
 /** Bot reactions, sent at lag 0 the moment each ball happens on the fastest feed. Max 31 steps (bitmask). */
 export const TRY_STEPS: TryStep[] = [
@@ -51,6 +57,13 @@ export const TRY_STEPS: TryStep[] = [
   { t: 42.7, bot: "meera", kind: "roar", intensity: 3 },
   { t: 43, bot: "meera", kind: "text", text: "UNREAL!!! What a finish 😭🔥" },
   { t: 43.2, bot: "arjun", kind: "roar", intensity: 3 },
+  // Call it (appended so earlier step numbers stay stable): the six is option 3.
+  // Asked right after the FOUR so a first-time visitor has ~12 s to pick before the lock reaches their screen.
+  { t: 13, bot: "arjun", kind: "call" },
+  { t: 14.5, bot: "meera", kind: "callvote", pick: 3 },
+  { t: 16, bot: "arjun", kind: "callvote", pick: 2 },
+  { t: 23, bot: "arjun", kind: "callresult", answer: -1 }, // lock well before the six: bot sends land ~1.5 s after their time
+  { t: 28, bot: "arjun", kind: "callresult", answer: 3 },
 ];
 
 /** Scoreboard state at a given match time (seconds). */

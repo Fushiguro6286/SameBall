@@ -42,6 +42,7 @@ On top of that core:
 
 - **Hype Radar:** a heartbeat that pulses when friends are reacting to something you haven't seen yet. Suspense without spoilers.
 - **Stadium Roar:** hold 📣 to roar; every phone plays the crowd at its own moment.
+- **Call it:** a fair-play prediction game. Someone asks "Next ball?", everyone picks, and each person's picks close when the ball reaches *their own* screen. A friend on a fast feed can't cheat, a friend on a slow feed can't be spoiled, and the points leaderboard keeps the room playing all match. Only SameBall's per-screen timing makes this fair.
 - **Lag Leaderboard** and **Sync Check:** see everyone's delay; calibrate the whole room from one shared moment.
 - **Crowd auto-calibration:** SameBall notices when your reactions line up better with a different delay and offers to fix it.
 - **The Wave:** after a big moment, watch it ripple across your squad's screens and share it as a story image.
@@ -57,7 +58,7 @@ On top of that core:
 | Match rooms | Group channels (create, join, leave), Web Chat SDK |
 | Guest sign-in | Server API access tokens; SDK connect |
 | Spoiler-free text | Text messages with an `extra` field carrying the sender's delay |
-| Roars, delay announcements, Sync Check, schedule markers | Five registered custom message types |
+| Roars, delay announcements, Sync Check, schedule markers, Call it | Eight registered custom message types |
 | Late joiners, replay, catch-up | Message history (Ghost Crowd uses the 180-day group history) |
 | Judge Mode bot friends, match markers | Server API messages sent as bot users |
 | Moderation | Server API mute list and member removal |
@@ -117,7 +118,8 @@ As of `<DATE>` (from our public `/stats` page, which excludes test and bot accou
 1. Open https://sameball.vercel.app/try and tap **Start the demo**.
 2. Tap **Start the over**. You're on a slower feed than the bot friends Arjun 📺 and Meera 🏟️.
 3. Their messages arrive locked ("unlocks in 12s"), Hype Radar pulses before the big ball, and the chat unlocks exactly when the six lands on your scoreboard.
-4. Tap ⏱ to change your feed and watch the timing change. "Open a second window on the TV feed" shows the other side.
+4. After the FOUR, Arjun asks "Ball 4?" (Call it). Pick before the ball reaches your screen; the answer and the points show only once the six has landed for you.
+5. Tap ⏱ to change your feed and watch the timing change. "Open a second window on the TV feed" shows the other side.
 
 **The Judges' room (a real match night, replayed):**
 

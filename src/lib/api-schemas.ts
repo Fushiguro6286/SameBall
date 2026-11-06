@@ -54,6 +54,8 @@ export const METRIC_EVENTS = [
   "message_locked",
   "revealed_on_time",
   "spoil_me",
+  "call_started",
+  "call_picked",
   "roar_sent",
   "lag_set",
   "sync_check_done",

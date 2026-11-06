@@ -18,7 +18,8 @@ Each person sets how far behind their feed is (pick TV / DTH / streaming / radio
 - **Hype Radar.** A heartbeat strip pulses when your squad is reacting to something you haven't seen yet: "👀 something's coming in 8s". No details, just the suspense.
 - **Stadium Roar.** Hold 📣 to roar; the crowd sound plays on each phone at that phone's own moment.
 - **Lag Leaderboard and Sync Check.** See who is "⚡ Live wire" and who is "🦕 30s in the past". Sync Check finds everyone's delay from one shared moment: everyone taps NOW when it hits their screen.
-- **Judge Mode (`/try`).** A private room with two bot friends and a scripted final over, so you can see the magic alone, on one device, with no match on.
+- **Call it.** A fair-play prediction game: someone asks "Next ball?", everyone picks 4 / 6 / OUT, and each person's picks close when the ball reaches *their* screen. The fast feed can't cheat, the slow feed can't be spoiled, and a points leaderboard runs all match.
+- **Judge Mode (`/try`). A private room with two bot friends and a scripted final over, so you can see the magic alone, on one device, with no match on.
 - **Ghost Crowd replay.** Watching a recording the next day? Sync to a moment, and the room's chat and roars replay alongside your video.
 - **The Wave.** After a big moment, see it ripple across your squad's screens, then share it as a story image.
 - **Crowd auto-calibration.** From when your friends reacted, SameBall suggests a better lag setting. It never changes your setting without asking.
@@ -34,7 +35,7 @@ Each person sets how far behind their feed is (pick TV / DTH / streaming / radio
 | Rooms | **Group channels** (`/v4/group-channel/create`, `/join`), up to 300 members; overflow into a second "Stand B" room |
 | Guest sign-in | **Server API** `/v4/auth/access-token/issue` mints a chat token per guest; **Web Chat SDK** `NCEngine.connect` |
 | Spoiler-free chat | **Text messages** (`RC:TxtMsg`) with an `extra` field carrying the sender's lag, name and avatar; timing runs on the message's server `sentTime` |
-| Roars, lag, sync check, schedule anchors | **Custom message types** registered with `registerCustomMessages`: `SB:Roar`, `SB:Lag`, `SB:SyncCheck`, `SB:SyncTap`, `SB:Anchor` |
+| Roars, lag, sync check, schedule anchors, Call it | **Custom message types** registered with `registerCustomMessages`: `SB:Roar`, `SB:Lag`, `SB:SyncCheck`, `SB:SyncTap`, `SB:Anchor`, `SB:Call`, `SB:CallVote`, `SB:CallResult` |
 | Late joiners, Ghost Crowd replay, catch-up | **Message history** (`BaseChannel.createMessagesQuery`); Ghost Crowd relies on Nexconn's 180-day group history |
 | Judge Mode bots, anchors | **Server API** `/v4/group-channel/message/send` sends text and custom messages as bot users with the same metadata as real clients |
 | Moderation | **Server API** `/v4/group-channel/user/mute-list/add` and `/v4/group-channel/leave` |
@@ -86,7 +87,7 @@ npm run dev
 | `DATABASE_URL` | Neon pooled connection string |
 | `ADMIN_TOKEN` | Protects `/admin` (feature rooms, post anchors, create stadiums) |
 | `AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`, `AI_FALLBACK_MODEL` | Optional. Any OpenAI-compatible provider for "What did I miss?" (or `GEMINI_API_KEY`) |
-| `NEXT_PUBLIC_FEATURE_*` | Set to `1` to turn on: `GHOST_CROWD`, `WAVE`, `AUTO_CALIBRATION`, `AI_CATCHUP`, `STADIUMS`, `HINDI` |
+| `NEXT_PUBLIC_FEATURE_*` | Set to `1` to turn on: `GHOST_CROWD`, `WAVE`, `AUTO_CALIBRATION`, `AI_CATCHUP`, `STADIUMS`, `HINDI`, `CALL_IT` |
 
 Without Nexconn credentials you can still try the timing locally: open `/r/ANY?demo=1&lag=20` in two tabs (dev builds only; it uses a local BroadcastChannel, not Nexconn).
 
@@ -94,7 +95,7 @@ Checks: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`. CI run
 
 ## How judges can test it
 
-**Alone, one device, no match on:** open https://sameball.vercel.app/try and tap **Start the demo**. You're on a slower feed than the two bot friends. Tap **Start the over** and watch their messages arrive locked and unlock as each ball reaches your screen. Tap ⏱ to change your feed and see the timing change. "Open a second window on the TV feed" shows the other side.
+**Alone, one device, no match on:** open https://sameball.vercel.app/try and tap **Start the demo**. You're on a slower feed than the two bot friends. Tap **Start the over** and watch their messages arrive locked and unlock as each ball reaches your screen. After the FOUR, Arjun asks "Ball 4?": pick before the ball reaches your screen and see if you called it. Tap ⏱ to change your feed and see the timing change. "Open a second window on the TV feed" shows the other side.
 
 **Two devices:** create a room on the home page, open the invite link on the second device, and pick different feeds (for example TV on one, Streaming app on the other). Send "SIX!" from the faster one: the slower one shows a locked bubble with a countdown. Hold 📣 to roar.
 

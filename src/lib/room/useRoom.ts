@@ -9,12 +9,13 @@ import { measureOffset } from "../timing/clock";
 import { LIVE_MAX_LAG_MS, MAX_LAG_MS, matchTime, revealAt, type ChatMsg } from "../timing/engine";
 import type { Pending } from "../timing/hype";
 import type { Tap } from "../timing/sync-solver";
+import { callsOf, type CallPoints, type CallState } from "../timing/callit";
 import { RoomStore, type ViewItem } from "../timing/room-store";
 import { findMoments, type Moment } from "../timing/wave";
 import { createLocalTransport } from "../transport/local";
 import { createNexconnTransport } from "../transport/nexconn";
 import type { ConnState, Transport } from "../transport/types";
-import { RawMsg, SB_TYPES, encodeTextExtra, parseIncoming, sbContent } from "../transport/wire";
+import { RawMsg, SB_TYPES, encodeTextExtra, parseIncoming, sbContent, type SbPayload } from "../transport/wire";
 
 export interface RoomSession {
   code: string;
@@ -51,6 +52,9 @@ interface Snapshot {
   firstAt: number | null;
   /** Big moments, from reactions already revealed for me (so never ahead of my screen). */
   moments: Moment[];
+  /** Call it: the latest prediction and the room's points (both only from what's revealed for me). */
+  call: CallState | null;
+  callBoard: CallPoints[];
 }
 /** The latest Sync Check and its taps. Control messages, readable even while locked. */
 export interface SyncState {
@@ -99,7 +103,8 @@ const anchorsOf = (st: RoomStore): Anchor[] =>
     .all()
     .filter((m) => m.kind === "anchor")
     .map((m) => ({ id: m.id, label: String(m.payload?.label ?? ""), matchTime: matchTime(m), senderId: m.senderId }));
-const snapshot = (st: RoomStore): Snapshot => ({
+const snapshot = (st: RoomStore, myId: string): Snapshot => ({
+  ...((c) => ({ call: c.current, callBoard: c.board }))(callsOf(st.all(), (id) => st.isRevealed(id), myId)),
   view: st.view(),
   lockedCount: st.lockedCount(),
   lagMs: st.effectiveLag(),
@@ -146,6 +151,8 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     paused: false,
     firstAt: null,
     moments: [],
+    call: null,
+    callBoard: [],
   });
   const [heldBack, setHeldBack] = useState(0);
   const [status, setStatus] = useState<RoomStatus>("connecting");
@@ -182,7 +189,7 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
         noteVisible(msgs);
         if (how === "schedule") emitRoars(msgs);
       },
-      onChange: () => !disposed && setSnap(snapshot(store)),
+      onChange: () => !disposed && setSnap(snapshot(store, s.guestId)),
     });
     storeRef.current = store;
     emitRoarsRef.current = (msgs) => emitRoars(msgs);
@@ -343,6 +350,34 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     [s.name, s.avatar],
   );
 
+  /** Sends an SB:* message stamped with my lag and adds it to my store. */
+  const sendSb = useCallback(
+    async <K extends "call" | "callvote" | "callresult">(kind: K, p: Omit<SbPayload<K>, "v" | "lag" | "n" | "a">) => {
+      const store = storeRef.current;
+      const tr = transportRef.current;
+      if (!store || !tr) throw new Error("not connected");
+      const content = sbContent(kind, { ...p, lag: store.effectiveLag(), n: s.name, a: s.avatar } as Omit<SbPayload<K>, "v">);
+      const m = parseIncoming(await tr.sendCustom(SB_TYPES[kind], content));
+      if (m) store.add([m]);
+    },
+    [s.name, s.avatar],
+  );
+  const startCall = useCallback(
+    async (q: string, opts: string[]) => {
+      await sendSb("call", { callId: crypto.randomUUID().replace(/-/g, "").slice(0, 12), q: q.slice(0, 60), opts: opts.slice(0, 5).map((o) => o.slice(0, 16)) });
+      track("call_started", s.code);
+    },
+    [sendSb, s.code],
+  );
+  const pickCall = useCallback(
+    async (callId: string, pick: number) => {
+      await sendSb("callvote", { callId, pick });
+      track("call_picked", s.code);
+    },
+    [sendSb, s.code],
+  );
+  const answerCall = useCallback((callId: string, answer: number) => sendSb("callresult", { callId, answer }), [sendSb]);
+
   const syncTap = useCallback(
     async (checkId: string) => {
       const store = storeRef.current;
@@ -397,6 +432,9 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     sendRoar,
     startSyncCheck,
     syncTap,
+    startCall,
+    pickCall,
+    answerCall,
     setLag,
     spoil: (id: string) => storeRef.current?.spoil(id),
     spoilAll: () => storeRef.current?.spoilAll(),

@@ -4,7 +4,7 @@ import { db, profiles, rooms } from "./db";
 import { issueToken, sendGroupMessage } from "./nexconn-server";
 import { createRoom, type Room } from "./rooms";
 import { TEXT_TYPE, SB_TYPES, encodeTextExtra, sbContent } from "./transport/wire";
-import { TRY_ANCHOR_LABEL, TRY_BOTS, TRY_STEPS, TRY_TEAMS, type BotKey } from "./try-script";
+import { TRY_ANCHOR_LABEL, TRY_BOTS, TRY_CALL, TRY_STEPS, TRY_TEAMS, type BotKey, type TryStep } from "./try-script";
 
 const BOT_LIST = Object.values(TRY_BOTS);
 const readyBots = new Set<string>();
@@ -43,6 +43,15 @@ function botSend(bot: BotKey, channelId: string, kind: "text" | "roar" | "anchor
   return sendGroupMessage(b.id, channelId, SB_TYPES.anchor, sbContent("anchor", { lag: 0, label: TRY_ANCHOR_LABEL, n: b.name, a: b.avatar }));
 }
 
+/** Call it steps, stamped like client messages (bots watch at lag 0). */
+function botCall(s: Extract<TryStep, { kind: "call" | "callvote" | "callresult" }>, channelId: string) {
+  const b = TRY_BOTS[s.bot];
+  const who = { lag: 0, callId: TRY_CALL.callId, n: b.name, a: b.avatar };
+  if (s.kind === "call") return sendGroupMessage(b.id, channelId, SB_TYPES.call, sbContent("call", { ...who, q: TRY_CALL.q, opts: TRY_CALL.opts }));
+  if (s.kind === "callvote") return sendGroupMessage(b.id, channelId, SB_TYPES.callvote, sbContent("callvote", { ...who, pick: s.pick }));
+  return sendGroupMessage(b.id, channelId, SB_TYPES.callresult, sbContent("callresult", { ...who, answer: s.answer }));
+}
+
 /** Starts the over once: sets the first-ball time and posts the anchor every window syncs to. */
 export async function startTry(room: Room): Promise<void> {
   const [won] = await db()
@@ -73,7 +82,7 @@ export async function sendTryStep(room: Room, step: number): Promise<"sent" | "a
     .returning({ code: rooms.code });
   if (!claimed) return "already";
   try {
-    await botSend(s.bot, room.channelId, s.kind, s.kind === "text" ? { text: s.text } : { intensity: s.intensity });
+    await (s.kind === "text" || s.kind === "roar" ? botSend(s.bot, room.channelId, s.kind, s.kind === "text" ? { text: s.text } : { intensity: s.intensity }) : botCall(s, room.channelId));
     return "sent";
   } catch (e) {
     await db().update(rooms).set({ trySteps: sql`${rooms.trySteps} & ~${bit}` }).where(eq(rooms.code, room.code));
