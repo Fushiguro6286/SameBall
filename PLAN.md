@@ -47,6 +47,6 @@ Note: the docs say `result.status` is a number, but the live API returned the st
 
 1. ~~Data center~~: answered, Singapore (`NEXCONN_AREA=SG`).
 2. Please turn on these Console settings: **pre-join history for new members**, **profanity filter**, the **Webhooks** URL (once deployed), and if offered, **"Subscribe to user online status"** (optional).
-3. **Vercel:** you're logged in through `npx vercel`, but the account has more than one team and the production deploy needs your approval. Which team should the `sameball` project go in? Or approve: `! npx vercel deploy --prod --yes --project sameball --scope <team-slug>`.
+3. ~~Vercel team~~: project `sameball` created and linked under the only team. A production deploy still needs your approval.
 4. **GitHub:** which repo name and account should I push the public repo to?
-5. **Neon:** should I provision Neon through the Vercel Marketplace, or will you paste a `DATABASE_URL`?
+5. ~~Neon~~: provisioned via Vercel Marketplace (`sameball-db`, Postgres 18), connected to the `sameball` project; `DATABASE_URL` is in `.env.local`.
