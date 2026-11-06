@@ -10,7 +10,7 @@ export function clampLag(ms: number): number {
   return Math.min(MAX_LAG_MS, Math.max(0, Math.round(ms)));
 }
 
-export type MsgKind = "text" | "voice" | "roar" | "lag" | "anchor" | "synccheck" | "synctap" | "call" | "callvote" | "callresult" | "host";
+export type MsgKind = "text" | "voice" | "roar" | "lag" | "anchor" | "synccheck" | "synctap" | "call" | "callvote" | "callresult" | "host" | "score";
 
 export interface ChatMsg {
   id: string;

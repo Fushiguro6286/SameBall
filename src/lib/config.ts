@@ -93,6 +93,7 @@ export const FEATURES = {
   voiceNotes: process.env.NEXT_PUBLIC_FEATURE_VOICE_NOTES === "1",
   creatorRooms: process.env.NEXT_PUBLIC_FEATURE_CREATOR_ROOMS === "1",
   seriesLeague: process.env.NEXT_PUBLIC_FEATURE_SERIES_LEAGUE === "1",
+  scoreStrip: process.env.NEXT_PUBLIC_FEATURE_SCORE_STRIP === "1",
 };
 
 /** Anchor the room creator posts to end the match (each viewer's recap opens when it reaches their screen). */

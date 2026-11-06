@@ -20,6 +20,7 @@ export const SB_TYPES = {
   callvote: "SB:CallVote",
   callresult: "SB:CallResult",
   host: "SB:Host",
+  score: "SB:Score",
 } as const;
 export type SbKind = keyof typeof SB_TYPES;
 export type SbType = (typeof SB_TYPES)[SbKind];
@@ -43,6 +44,8 @@ export const SbPayloads = {
   callresult: z.object({ ...base, callId: z.string().max(32), answer: z.number().int().min(-1).max(4) }),
   // Creator rooms, host only: pin a message (id "" = unpin), slow mode for fans, hide a recalled message, quiet fans.
   host: z.object({ ...base, op: z.enum(["pin", "slow", "hide", "quiet"]), id: z.string().max(64).optional(), secs: z.number().int().min(0).max(300).optional(), on: z.boolean().optional() }),
+  // Live score line from the host bot, stamped like any message so each screen gets it at its own delay.
+  score: z.object({ ...base, s: z.string().min(1).max(40) }),
 } satisfies Record<SbKind, z.ZodType>;
 export type SbPayload<K extends SbKind> = z.infer<(typeof SbPayloads)[K]>;
 
