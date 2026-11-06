@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { FEEDBACK_AFTER_MS } from "@/lib/config";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/client";
 
 const askedKey = (code: string) => `sb-feedback:${code}`;
 
 /** Asks once per room, after 20 minutes in it. */
 export function FeedbackPrompt({ guestId, guestKey, roomCode }: { guestId: string; guestKey: string; roomCode: string }) {
+  const t = useT();
   const [show, setShow] = useState(false);
   const [helpful, setHelpful] = useState<boolean | null>(null);
   const [comment, setComment] = useState("");

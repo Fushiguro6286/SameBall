@@ -1,9 +1,10 @@
 "use client";
 
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/client";
 import type { RoomStatus } from "@/lib/room/useRoom";
 
 export function ConnBanner({ status, isDemo, onRetry }: { status: RoomStatus; isDemo: boolean; onRetry: () => void }) {
+  const t = useT();
   return (
     <>
       {isDemo && (

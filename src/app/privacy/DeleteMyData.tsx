@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { clearAll, loadProfile } from "@/lib/client/storage";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/client";
 
 export function DeleteMyData() {
+  const t = useT();
   const [state, setState] = useState<"idle" | "busy" | "done" | "none" | "error">("idle");
   const del = async () => {
     const profile = loadProfile();

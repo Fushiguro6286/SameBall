@@ -61,6 +61,11 @@ Judge Mode API (create, join, start idempotent, steps once/early 425/non-member 
   - Home page and admin list show a "🏟️ Stadium" label.
   - Tested **live** (real Nexconn, test-flagged user) in test stadium Z9VNW3 (unfeatured afterwards): creation made the community and 3 stands; auto-join landed in East with the Kick-off anchor from history; a server message to South didn't show in East while one to East did; switching to South loaded its history (no East message, anchor present); a message typed in South stayed out of North and came back from history.
   - Nexconn keeps community history 7 days by default (groups: 180), so a Ghost Crowd replay of a stadium works for a week unless retention is raised in the Console.
+- **Break-time Huddle: skipped for now.** It needs a card on file for the free Call SDK minutes; waiting for your go-ahead.
+- **Hindi UI**, behind `NEXT_PUBLIC_FEATURE_HINDI=1`. Full Hindi dictionary (`i18n/hi.ts`, typed against English, so a missing key fails the build; a test also checks the key shapes match). A "हिंदी / English" button on the home page and at the top of the room menu; the choice is saved per browser, and browsers set to Hindi start in Hindi. Devanagari text uses Noto Sans Devanagari (only downloaded when Hindi text is on screen).
+  - How it works: the server always renders English; right after the page loads, components switch to the saved language without a reload and without losing room state. Components render text from a `useT()` hook (English while hydrating), so even late-loading parts of a page never mismatch the server HTML.
+  - Covered: home (incl. live rooms list), try flow, room (chat, lag sheet, menus, Ghost Crowd, The Wave and its story image, catch-up, sync check, moderation), join form, 404, errors. **Still English:** privacy, stats and admin pages, page titles/link previews, bot chat lines and quick-chat chips (already Hinglish).
+  - Tested: unit tests (shape, sample functions, switching); production build in the browser: home, try, 404 and a stadium room in Hindi after a fresh load with no console errors; switching back to English from the room menu.
 - Fixes found while testing: countdowns could show a stale time for one second after a quiet period (`useNow` now ticks immediately); anchor senders (the host bot) no longer count as room members on the leaderboard or the wave.
 
 ## Next
@@ -76,6 +81,6 @@ Judge Mode API (create, join, start idempotent, steps once/early 425/non-member 
 - Server-API messages don't appear in the *sender's own* history (no echo). Only affects bots, which never view chat.
 - Clock offset is measured against our server; message times come from Nexconn's server. Both are NTP-synced, so the error should be tens of ms.
 - Nexconn error `2007`: a dev-mode app caps registered users at 100. Each guest, bot and Judge Mode second window counts. Check your app's environment in the Console before inviting real users.
-- The dev server sometimes keeps stale modules after edits (Turbopack on Windows); restart it if an API behaves like old code.
+- The dev server sometimes keeps stale modules after edits (Turbopack on Windows); restart it if an API behaves like old code. Once it got stuck reloading the home page in a loop; a fresh `next dev` fixed it (production was never affected).
 - Test rooms created during P1 checks (all by test users, excluded from /stats): 27299A (try), H5D4ZH, UA6F4H, VYQTGE, C7QAHC, Z9VNW3 (stadium).
 - Removed members still count toward `member_count` (overflow happens slightly early). Harmless at our scale.

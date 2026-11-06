@@ -1,7 +1,7 @@
 "use client";
 
 import { LAG_SOURCES, NUDGE_LATE_S, NUDGE_SPOILED_S, SLIDER_MAX_S } from "@/lib/config";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/client";
 import { Sheet } from "./Sheet";
 
 export function LagSheet({
@@ -17,6 +17,7 @@ export function LagSheet({
   source: string;
   onChange: (ms: number, source: string) => void;
 }) {
+  const t = useT();
   const secs = Math.round(lagMs / 1000);
   const setSecs = (s: number, src = "custom") => onChange(Math.max(0, s) * 1000, src);
 

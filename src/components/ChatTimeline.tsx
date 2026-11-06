@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { useNow } from "@/lib/client/useNow";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/client";
 import type { ViewItem } from "@/lib/timing/room-store";
 import { Avatar } from "./Avatar";
 import { LockedBubble } from "./LockedBubble";
@@ -71,6 +71,7 @@ export function ChatTimeline({
 }
 
 function Bubble({ m }: { m: ViewItem }) {
+  const t = useT();
   if (m.mine) {
     return (
       <div className="pop-in flex justify-end">

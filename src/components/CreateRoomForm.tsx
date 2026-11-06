@@ -6,10 +6,11 @@ import { createRoomApi, errorText, isTestBrowser, startSession } from "@/lib/cli
 import { setMetricsUser, track } from "@/lib/client/metrics";
 import { loadProfile, rememberRoom, saveProfile } from "@/lib/client/storage";
 import { AVATARS, ROOM_NAME_MAX, SPORTS, type Sport } from "@/lib/config";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/client";
 import { ProfileFields } from "./ProfileFields";
 
 export function CreateRoomForm() {
+  const t = useT();
   const router = useRouter();
   const [roomName, setRoomName] = useState("");
   const [sport, setSport] = useState<Sport>("cricket");

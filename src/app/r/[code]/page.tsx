@@ -5,6 +5,7 @@ import { ROOM_CODE_RE } from "@/lib/guard";
 import { t } from "@/lib/i18n";
 import { aiConfig } from "@/lib/ai";
 import { getRoom } from "@/lib/rooms";
+import { Tx } from "@/components/Lang";
 import { RoomClient } from "./RoomClient";
 
 const isDemo = (sp: Record<string, string | string[] | undefined>) => sp.demo === "1" && process.env.NODE_ENV !== "production";
@@ -22,7 +23,7 @@ export async function generateMetadata(props: PageProps<"/r/[code]">): Promise<M
 
 export default function RoomPage(props: PageProps<"/r/[code]">) {
   return (
-    <Suspense fallback={<main className="flex flex-1 items-center justify-center text-muted">{t.room.loading}</main>}>
+    <Suspense fallback={<main className="flex flex-1 items-center justify-center text-muted"><Tx k="room.loading" /></main>}>
       <RoomLoader {...props} />
     </Suspense>
   );

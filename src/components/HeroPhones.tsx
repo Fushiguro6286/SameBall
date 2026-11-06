@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/client";
 
 // A looping 9-second story: the fast phone sees the six and a friend's message;
 // the slow phone gets a locked bubble that unlocks the moment its own feed shows the six.
@@ -11,6 +11,7 @@ const MSG = 2200;
 const HERO_LAG = 4000;
 
 export function HeroPhones() {
+  const t = useT();
   const [ms, setMs] = useState(LOOP - 1);
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -62,7 +63,13 @@ function Phone({ label, six, children }: { label: string; six: boolean; children
   );
 }
 
-const Mine = () => <p className="pop-in ml-auto rounded-xl rounded-br-sm bg-accent px-2 py-1.5 text-xs text-accent-ink">{t.landing.heroMsg}</p>;
-const Theirs = ({ flash }: { flash: boolean }) => (
+function Mine() {
+  const t = useT();
+  return <p className="pop-in ml-auto rounded-xl rounded-br-sm bg-accent px-2 py-1.5 text-xs text-accent-ink">{t.landing.heroMsg}</p>;
+}
+function Theirs({ flash }: { flash: boolean }) {
+  const t = useT();
+  return (
   <p className={`rounded-xl rounded-bl-sm border border-line bg-surface-2 px-2 py-1.5 text-xs ${flash ? "reveal-flash" : ""}`}>🦊 {t.landing.heroMsg}</p>
-);
+  );
+}

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ApiError, tryStartApi, tryStepApi, type Auth } from "@/lib/client/api";
 import { useNow } from "@/lib/client/useNow";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/client";
 import { HYPE_HIGH, hypeHeat, type Pending } from "@/lib/timing/hype";
 import { TRY_ANCHOR_LABEL, TRY_BALLS, TRY_BOTS, TRY_END_T, TRY_SIX_T, TRY_STEPS, TRY_TARGET, TRY_TEAMS, scoreAt, type BallResult } from "@/lib/try-script";
 import type { Anchor } from "@/lib/room/useRoom";
@@ -38,6 +38,7 @@ export function TryPanel({
   heldBack: number;
   ready: boolean;
 }) {
+  const t = useT();
   const { guestId, key } = auth;
   const start = anchors.find((a) => a.label === TRY_ANCHOR_LABEL && BOT_IDS.has(a.senderId))?.matchTime ?? null;
   const [starting, setStarting] = useState(false);

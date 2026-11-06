@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { loadRooms, type SavedRoom } from "@/lib/client/storage";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/client";
 
 // No last-message previews here, ever (spoiler rule).
 export function MyRooms() {
+  const t = useT();
   const [rooms, setRooms] = useState<SavedRoom[]>([]);
   // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage is browser-only
   useEffect(() => setRooms(loadRooms()), []);

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { track } from "@/lib/client/metrics";
 import { useNow } from "@/lib/client/useNow";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/client";
 import type { SyncState } from "@/lib/room/useRoom";
 import { solveSync } from "@/lib/timing/sync-solver";
 import { Sheet } from "./Sheet";
@@ -28,6 +28,7 @@ export function SyncCheckCard({
   onTap: (checkId: string) => Promise<void>;
   onApply: (lagMs: number) => void;
 }) {
+  const t = useT();
   const now = useNow(!!sync, 1000, clockOffset);
   const [closed, setClosed] = useState<string | null>(null);
   const [tapping, setTapping] = useState(false);
@@ -104,6 +105,7 @@ export function SyncCheckCard({
 
 /** Sheet to start a Sync Check with a named moment. */
 export function SyncStartSheet({ open, onClose, onStart }: { open: boolean; onClose: () => void; onStart: (label: string) => Promise<void> }) {
+  const t = useT();
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);

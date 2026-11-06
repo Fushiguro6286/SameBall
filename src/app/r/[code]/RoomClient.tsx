@@ -12,6 +12,7 @@ import { FeedbackPrompt } from "@/components/FeedbackPrompt";
 import { GhostPanel } from "@/components/GhostPanel";
 import { HypeStrip } from "@/components/HypeStrip";
 import { LagBoard, useWatching } from "@/components/LagBoard";
+import { LangToggle } from "@/components/Lang";
 import { RoarButton } from "@/components/RoarButton";
 import { StartBanner } from "@/components/StartBanner";
 import { SyncCheckCard, SyncStartSheet } from "@/components/SyncCheck";
@@ -28,7 +29,7 @@ import { setMetricsUser, track } from "@/lib/client/metrics";
 import { loadBlocked, loadProfile, loadRoomPrefs, loadSetting, loadStand, rememberRoom, saveBlocked, saveProfile, saveSetting, saveStand } from "@/lib/client/storage";
 import { AVATARS, FEATURES, LAG_SOURCES, QUICK_CHIPS, asSport, type Sport, STADIUM_STANDS, type StandId } from "@/lib/config";
 import { useNow } from "@/lib/client/useNow";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/client";
 import { useRoom, type RoomSession } from "@/lib/room/useRoom";
 import { suggestLag } from "@/lib/timing/calibration";
 
@@ -88,6 +89,7 @@ export function RoomClient({
   aiCatchup?: boolean;
   demo: boolean;
 }) {
+  const t = useT();
   const router = useRouter();
   const params = useSearchParams();
   const second = kind === "try" && params.get("second") === "1";
@@ -251,6 +253,7 @@ function RoomView({
   /** Stadiums only: move to another stand (sub-channel). */
   onStand?: (s: StandId) => void;
 }) {
+  const t = useT();
   const params = useSearchParams();
   const [prefs] = useState(() => {
     if (second) return { lagMs: TV_SOURCE.seconds * 1000, source: TV_SOURCE.id as string, first: false };
@@ -321,7 +324,7 @@ function RoomView({
   useEffect(() => {
     const counts = t.room.titleCounts(room.unseen, room.lockedCount);
     document.title = counts ? `(${counts}) ${roomName}` : roomName;
-  }, [room.unseen, room.lockedCount, roomName]);
+  }, [room.unseen, room.lockedCount, roomName, t]);
 
   const watching = useWatching(session.guestId, session.key ?? "", session.code, !replay && !session.demo && !!session.key);
   // My own entry always shows my current lag, even before my latest stamp goes out.
@@ -521,6 +524,7 @@ function RoomView({
 
       <Sheet open={menuOpen} onClose={() => (setMenuOpen(false), setConfirmAll(false))} title={t.room.menu}>
         <div className="mt-4 flex flex-col gap-2">
+          <LangToggle className="self-start" />
           <button
             onClick={() => (setMenuOpen(false), setInviteOpen(true))}
             className="rounded-2xl border border-line bg-surface-2 px-4 py-3 text-left"

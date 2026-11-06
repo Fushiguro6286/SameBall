@@ -1,10 +1,11 @@
 "use client";
 
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/client";
 import type { LagSuggestion } from "@/lib/timing/calibration";
 
 /** A suggestion only: the lag changes when the viewer taps Apply, never on its own. */
 export function CalibrationCard({ s, onApply, onDismiss }: { s: LagSuggestion; onApply: () => void; onDismiss: () => void }) {
+  const t = useT();
   const d = Math.round(Math.abs(s.delta) / 1000);
   return (
     <div role="status" className="pop-in mx-auto mb-1 max-w-xl px-3">

@@ -5,10 +5,11 @@ import { useState } from "react";
 import { errorText, startTryApi } from "@/lib/client/api";
 import { setMetricsUser } from "@/lib/client/metrics";
 import { loadProfile, rememberRoom, saveProfile } from "@/lib/client/storage";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/client";
 
 /** One tap: create the demo room (reusing this browser's guest if any) and go there. */
 export function TryStart() {
+  const t = useT();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

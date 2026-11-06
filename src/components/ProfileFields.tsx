@@ -1,7 +1,7 @@
 "use client";
 
 import { AVATARS, NAME_MAX } from "@/lib/config";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/client";
 
 export function ProfileFields({
   name,
@@ -14,6 +14,7 @@ export function ProfileFields({
   onName: (v: string) => void;
   onAvatar: (v: string) => void;
 }) {
+  const t = useT();
   return (
     <>
       <label className="block">

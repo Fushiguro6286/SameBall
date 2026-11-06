@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { FEATURES, SPORTS } from "@/lib/config";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/client";
 
 interface AdminRoom {
   code: string;
@@ -16,6 +16,7 @@ interface AdminRoom {
 
 /** Feature rooms and post anchors. The token stays in this tab only. */
 export function AdminPanel() {
+  const t = useT();
   const [token, setToken] = useState("");
   const [rooms, setRooms] = useState<AdminRoom[] | null>(null);
   const [error, setError] = useState<string | null>(null);

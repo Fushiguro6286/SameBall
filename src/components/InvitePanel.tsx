@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/client";
 
 export function InvitePanel({ url, roomName }: { url: string; roomName: string }) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
   const [qr, setQr] = useState<string | null>(null);
   const canShare = typeof navigator !== "undefined" && "share" in navigator;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/client";
 
 const SEND_EVERY_MS = 1500; // at most one roar per ~1.5 s while held
 const FULL_MS = 3000;
@@ -10,6 +10,7 @@ export const roarIntensity = (heldMs: number): 1 | 2 | 3 => (heldMs < 1000 ? 1 :
 
 /** Hold to roar. The ring fills with intensity; a roar is sent on press and every 1.5 s while held. */
 export function RoarButton({ disabled, onStart, onRoar }: { disabled: boolean; onStart: () => void; onRoar: (intensity: 1 | 2 | 3, durMs: number) => void }) {
+  const t = useT();
   const [fill, setFill] = useState(0);
   const startedAt = useRef<number | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);

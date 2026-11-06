@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { errorText, moderateApi, presenceApi, reportApi, type Auth } from "@/lib/client/api";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/client";
+import type { Dict } from "@/lib/i18n/en";
 import { rankLags, type Badge, type BoardEntry } from "@/lib/lag-board";
 import { Avatar } from "./Avatar";
 import { Sheet } from "./Sheet";
@@ -33,7 +34,7 @@ export function useWatching(guestId: string, key: string, code: string, enabled:
   return n;
 }
 
-const badgeText = (b: Badge) => (b.kind === "fastest" ? t.board.liveWire : b.kind === "slowest" ? t.board.past(b.s) : t.board.behind(b.s));
+const badgeText = (t: Dict, b: Badge) => (b.kind === "fastest" ? t.board.liveWire : b.kind === "slowest" ? t.board.past(b.s) : t.board.behind(b.s));
 
 export function LagBoard({
   entries,
@@ -53,6 +54,7 @@ export function LagBoard({
   blocked: ReadonlySet<string>;
   onToggleBlock: (id: string) => void;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [actionsFor, setActionsFor] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -84,7 +86,7 @@ export function LagBoard({
         <span className="truncate">
           {watching !== null && t.board.watching(watching)}
           {watching !== null && me && " · "}
-          {me && `${t.room.you}: ${badgeText(me.badge)}`}
+          {me && `${t.room.you}: ${badgeText(t, me.badge)}`}
         </span>
       </button>
       <Sheet open={open} onClose={() => (setOpen(false), setActionsFor(null), setNote(null))} title={t.board.title}>
@@ -108,7 +110,7 @@ export function LagBoard({
                     {r.senderId === myId && <span className="text-muted"> ({t.room.you})</span>}
                     {isBlocked && <span className="text-muted"> · {t.mod.blockedTag}</span>}
                   </span>
-                  <span className={`text-sm font-semibold ${r.badge.kind === "fastest" ? "text-accent" : ""}`}>{badgeText(r.badge)}</span>
+                  <span className={`text-sm font-semibold ${r.badge.kind === "fastest" ? "text-accent" : ""}`}>{badgeText(t, r.badge)}</span>
                   {other && (
                     <button
                       onClick={() => setActionsFor(actionsFor === r.senderId ? null : r.senderId)}

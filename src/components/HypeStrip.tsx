@@ -2,11 +2,12 @@
 
 import { useEffect, useRef } from "react";
 import { useNow } from "@/lib/client/useNow";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/client";
 import { HYPE_HIGH, hypeHeat, type Pending } from "@/lib/timing/hype";
 
 /** Thin heartbeat above the input. Shows intensity only, never content or whether it's good or bad news. */
 export function HypeStrip({ pending, clockOffset }: { pending: Pending[]; clockOffset: number }) {
+  const t = useT();
   const now = useNow(pending.length > 0, 500, clockOffset);
   const { heat, nextAt } = hypeHeat(pending, now);
   const high = heat >= HYPE_HIGH && nextAt !== null;

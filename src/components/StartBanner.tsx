@@ -2,10 +2,11 @@
 
 import { useNow } from "@/lib/client/useNow";
 import { googleCalendarUrl, icsFile } from "@/lib/calendar";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/client";
 
 /** Countdown for a scheduled room, with Add to calendar. Hidden once the match starts. */
 export function StartBanner({ startsAt, roomName, code, url }: { startsAt: number; roomName: string; code: string; url: string }) {
+  const t = useT();
   const now = useNow(true, 1000);
   const left = startsAt - now;
   if (left <= 0) return null;

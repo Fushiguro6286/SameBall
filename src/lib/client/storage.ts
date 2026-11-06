@@ -1,6 +1,7 @@
 // Per-browser conveniences in localStorage. Every access is guarded: storage can be blocked.
 
 import { STADIUM_STANDS, asStand, type StandId } from "../config";
+import type { Lang } from "../i18n";
 
 export interface Profile {
   guestId?: string;
@@ -54,6 +55,18 @@ export function loadStand(code: string, guestId: string): StandId {
   return STADIUM_STANDS[h % STADIUM_STANDS.length];
 }
 export const saveStand = (code: string, stand: StandId) => write(`sb-stand:${code}`, stand);
+
+/** UI language: saved choice, else Hindi for browsers set to Hindi. */
+export function loadLang(): Lang {
+  const saved = read<string | null>("sb-lang", null);
+  if (saved === "hi" || saved === "en") return saved;
+  try {
+    return navigator.language.toLowerCase().startsWith("hi") ? "hi" : "en";
+  } catch {
+    return "en";
+  }
+}
+export const saveLang = (l: Lang) => write("sb-lang", l);
 
 /** Per-browser on/off settings: "suspense" (Hype Radar), "muted" (stadium sound). */
 export const loadSetting = (key: string, fallback: boolean) => read<boolean>(`sb-set:${key}`, fallback);

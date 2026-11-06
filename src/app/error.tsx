@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/client";
 import { reportError } from "@/lib/client/report-error";
 
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  const t = useT();
   useEffect(() => reportError(error), [error]);
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/client";
 import { Avatar } from "./Avatar";
 
 // Receives no message content by design: there is nothing to leak into the DOM.
@@ -20,6 +20,7 @@ export function LockedBubble({
   now: number;
   onSpoil: () => void;
 }) {
+  const t = useT();
   const [confirming, setConfirming] = useState(false);
   const secs = Math.max(0, Math.ceil((revealAt - now) / 1000));
   const total = Math.max(1, revealAt - lockedSince);

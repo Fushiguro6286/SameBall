@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { track } from "@/lib/client/metrics";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/client";
+import type { Dict } from "@/lib/i18n/en";
 import { waveOf, type Moment, type Wave, type Who } from "@/lib/timing/wave";
 import { Sheet } from "./Sheet";
 
@@ -11,7 +12,7 @@ const LANE_GAP_PCT = 9;
 
 const secs = (ms: number) => Math.round(ms / 1000);
 
-function captionLines(w: Wave): string[] {
+function captionLines(t: Dict, w: Wave): string[] {
   const s = secs(w.spreadMs);
   if (s === 0) return [t.wave.sameTime, t.wave.safe];
   return [t.wave.caption(s), t.wave.firstLast(w.dots[0].name, w.dots[w.dots.length - 1].name), t.wave.safe];
@@ -44,6 +45,7 @@ export function WaveSheet({
   roomName: string;
   code: string;
 }) {
+  const t = useT();
   const [index, setIndex] = useState<number | null>(null);
   const [run, setRun] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -60,10 +62,10 @@ export function WaveSheet({
     setBusy(true);
     setNote("");
     try {
-      const blob = await drawStory(wave, roomName);
+      const blob = await drawStory(t, wave, roomName);
       const file = new File([blob], "sameball-wave.png", { type: "image/png" });
       if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], text: captionLines(wave).join(" ") });
+        await navigator.share({ files: [file], text: captionLines(t, wave).join(" ") });
         track("wave_shared", code, { via: "share" });
       } else {
         const a = document.createElement("a");
@@ -125,7 +127,7 @@ export function WaveSheet({
           ))}
         </ol>
         <div className="mt-3 space-y-0.5 text-sm">
-          {captionLines(wave).map((l) => (
+          {captionLines(t, wave).map((l) => (
             <p key={l}>{l}</p>
           ))}
         </div>
@@ -149,7 +151,7 @@ export function WaveSheet({
 }
 
 /** 1080×1920 story image. Names, avatars and timings only: no message content, no logos. */
-async function drawStory(w: Wave, roomName: string): Promise<Blob> {
+async function drawStory(t: Dict, w: Wave, roomName: string): Promise<Blob> {
   const W = 1080;
   const H = 1920;
   const c = document.createElement("canvas");
@@ -219,7 +221,7 @@ async function drawStory(w: Wave, roomName: string): Promise<Blob> {
 
   // Caption under the rows, word-wrapped.
   let y = top + rows.length * rowH + 100;
-  captionLines(w).forEach((l, k) => {
+  captionLines(t, w).forEach((l, k) => {
     ctx.font = `${k === 0 ? 50 : 42}px ${sans}`;
     const lines: string[] = [];
     for (const word of l.split(" ")) {

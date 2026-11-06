@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { track } from "@/lib/client/metrics";
 import { useNow } from "@/lib/client/useNow";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/client";
 import type { Anchor } from "@/lib/room/useRoom";
 
 const NUDGES = [-60, -10, 10, 60];
@@ -53,6 +53,7 @@ export function GhostPanel({
   onNudge: (lagDeltaMs: number) => void;
   onResync: () => void;
 }) {
+  const t = useT();
   const options: Anchor[] = [...anchors];
   if (firstAt !== null)
     options.unshift({
@@ -152,6 +153,7 @@ export function GhostPanel({
 
 // +10s moves the chat forward in the match, which means 10 s less lag.
 function NudgeButton({ s, onNudge }: { s: number; onNudge: (lagDeltaMs: number) => void }) {
+  const t = useT();
   return (
     <button
       onClick={() => onNudge(-s * 1000)}

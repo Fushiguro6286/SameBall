@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { MESSAGE_MAX } from "@/lib/config";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/client";
 
 export function Composer({
   disabled,
@@ -16,6 +16,7 @@ export function Composer({
   /** Rendered beside the input (the roar button). */
   children?: ReactNode;
 }) {
+  const t = useT();
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
