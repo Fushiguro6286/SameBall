@@ -20,7 +20,9 @@ Checked against `@nexconn/chat` and `@nexconn/engine` **26.2.1** (`index.d.ts`) 
 
 **Where the lag stamp goes:** we use `content.extra = '{"sb":1,"lag":25000}'`, not `metadata`. `extra` is part of the immutable message body, and the server API can set it in the same way (`content: "{\"content\":\"hi\",\"extra\":\"...\"}"`). Message metadata can be changed after sending with `setMetadata`, and that uses up send rate quota.
 
-## Server API (docs; checked on first live call)
+## Server API (signing verified live on Nov 6: app is in **Singapore**, SG domain returned `code 0`, US and SAU returned 403 "App-Key is not exist")
+
+Note: the docs say `result.status` is a number, but the live API returned the string `"0"`. Parse API fields leniently.
 
 - **Signing:** headers `App-Key`, `Nonce` (≤ 18 chars), `Timestamp` (**ms**), `Signature = sha1(AppSecret + Nonce + Timestamp)` in lowercase hex. A bad signature returns 401. Every endpoint is POST with a JSON body.
 - **Domains:** SG `api.sg-light-api.com` / backup `api-b.sg-light-api.com`; NA `api.us-light-api.com` / `api-b.us-light-api.com`. Switch to the backup on a 5 s timeout or an unexpected status.
@@ -43,7 +45,7 @@ Checked against `@nexconn/chat` and `@nexconn/engine` **26.2.1** (`index.d.ts`) 
 
 ## Open questions for you
 
-1. **Data center:** which region is the app in (SG or NA)? That sets `NEXCONN_AREA` and the API domains.
+1. ~~Data center~~: answered, Singapore (`NEXCONN_AREA=SG`).
 2. Please turn on these Console settings: **pre-join history for new members**, **profanity filter**, the **Webhooks** URL (once deployed), and if offered, **"Subscribe to user online status"** (optional).
 3. **Vercel:** you're logged in through `npx vercel`, but the account has more than one team and the production deploy needs your approval. Which team should the `sameball` project go in? Or approve: `! npx vercel deploy --prod --yes --project sameball --scope <team-slug>`.
 4. **GitHub:** which repo name and account should I push the public repo to?
