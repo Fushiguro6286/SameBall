@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     await db()
       .insert(profiles)
       .values({ id: guestId, name: b.name, avatar: b.avatar, referrer: b.ref && b.ref !== guestId ? b.ref : null, isTest: !!b.test })
-      .onConflictDoUpdate({ target: profiles.id, set: { name: b.name, avatar: b.avatar, lastSeenAt: new Date() } });
+      .onConflictDoUpdate({ target: profiles.id, set: { name: b.name, avatar: b.avatar, lastSeenAt: new Date(), ...(b.test ? { isTest: true } : {}) } });
     const [token, room] = await Promise.all([
       issueToken(guestId, b.name),
       b.roomCode ? joinRoom(b.roomCode, guestId).catch((e: Error) => (e.message === "room not found" ? null : Promise.reject(e))) : undefined,

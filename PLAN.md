@@ -50,3 +50,12 @@ Note: the docs say `result.status` is a number, but the live API returned the st
 3. ~~Vercel~~: live at https://sameball.vercel.app (project `sameball`).
 4. ~~GitHub~~: https://github.com/Fushiguro6286/SameBall (public).
 5. ~~Neon~~: provisioned via Vercel Marketplace (`sameball-db`, Postgres 18), connected to the `sameball` project; `DATABASE_URL` is in `.env.local`.
+
+## Found during Phase 1 (live tests, Nov 6)
+
+- Confirmed live: browser-sent `content.extra` survives the round trip; `sentTime` is server ms; server-API text uses `{"content","extra"}`.
+- Server-API messages are not in the sender's own history unless `isEchoToSender` is set. Bots don't need it.
+- The SDK's own code comment says `onConnectionStateChanged`; the type is `onConnectionStatusChanged` (we use the type).
+- Group size: the status-code page says 3,000 per group; we cap at 300 (Free plan per the brief) and also overflow on error `25411`.
+- **Risk:** error `2007` = "registered user count exceeded (100 in dev, or production without a paid IM plan)". Each guest is a registered user. Please check whether the app is in development or production mode in the Console.
+- Next 16 template enables `cacheComponents`: route-segment configs (`dynamic`, `revalidate`) are not allowed; use `connection()` and Suspense instead.

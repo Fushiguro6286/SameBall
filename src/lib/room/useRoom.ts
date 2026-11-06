@@ -47,6 +47,7 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
   const [ready, setReady] = useState(false);
   const [unseen, setUnseen] = useState(0);
   const [announce, setAnnounce] = useState("");
+  const [clockOffset, setClockOffset] = useState(0);
 
   useEffect(() => {
     let disposed = false;
@@ -87,7 +88,9 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
 
     const syncClock = async () => {
       offset = await measureOffset(fetchServerTime);
-      if (!disposed) store.clockChanged();
+      if (disposed) return;
+      setClockOffset(Math.round(offset));
+      store.clockChanged();
     };
 
     const loadHistory = async () => {
@@ -200,6 +203,7 @@ export function useRoom(s: RoomSession, initialLagMs: number, initialSource: str
     ...snap,
     unseen,
     announce,
+    clockOffset,
     sendText,
     setLag,
     spoil: (id: string) => storeRef.current?.spoil(id),

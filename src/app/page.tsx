@@ -1,10 +1,52 @@
-// Phase 0 placeholder. The real landing page comes in Phase 1.
+import Link from "next/link";
+import { CreateRoomForm } from "@/components/CreateRoomForm";
+import { HeroPhones } from "@/components/HeroPhones";
+import { MyRooms } from "@/components/MyRooms";
+import { t } from "@/lib/i18n";
+
 export default function Home() {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 text-center">
-      <h1 className="text-5xl font-bold tracking-tight">SameBall</h1>
-      <p className="max-w-sm text-lg opacity-80">The group chat that never spoils the match.</p>
-      <p className="text-sm text-accent">Coming soon</p>
+    <main className="floodlight flex flex-1 flex-col">
+      <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-10 px-4 pb-16 pt-10">
+        <header className="text-center">
+          <p className="font-display text-xl tracking-widest text-accent">{t.appName}</p>
+          <h1 className="mt-2 font-display text-5xl leading-[0.95] sm:text-6xl">{t.landing.heroTitle}</h1>
+          <p className="mx-auto mt-4 max-w-md text-muted">{t.landing.heroBody}</p>
+        </header>
+
+        <HeroPhones />
+
+        <a href="#create" className="rounded-full bg-accent px-8 py-3.5 text-lg font-semibold text-accent-ink">
+          {t.landing.createRoom}
+        </a>
+
+        <section aria-labelledby="how" className="w-full">
+          <h2 id="how" className="mb-3 font-display text-3xl">
+            {t.landing.howTitle}
+          </h2>
+          <ol className="grid gap-3 sm:grid-cols-3">
+            {t.landing.steps.map((s, i) => (
+              <li key={s.title} className="rounded-2xl border border-line bg-surface p-4">
+                <span className="font-display text-3xl text-accent">{i + 1}</span>
+                <h3 className="font-semibold">{s.title}</h3>
+                <p className="mt-1 text-sm text-muted">{s.body}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <MyRooms />
+        <CreateRoomForm />
+
+        <footer className="flex gap-5 text-sm text-muted">
+          <Link href="/stats" className="underline-offset-4 hover:underline">
+            {t.landing.stats}
+          </Link>
+          <Link href="/privacy" className="underline-offset-4 hover:underline">
+            {t.landing.privacy}
+          </Link>
+        </footer>
+      </div>
     </main>
   );
 }

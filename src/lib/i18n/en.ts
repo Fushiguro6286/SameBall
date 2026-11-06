@@ -19,7 +19,7 @@ export const en = {
     ],
     myRooms: "My rooms",
     phoneFast: "📺 TV · live",
-    phoneSlow: "📱 Streaming · +25s",
+    phoneSlow: "📱 Streaming · +4s",
     heroMsg: "SIX!! 🔥🔥",
     heroUnlocks: "unlocks in",
     privacy: "Privacy",

@@ -17,7 +17,18 @@ async function post<T>(url: string, body: unknown): Promise<T> {
   return data as T;
 }
 
-export const startSession = async (req: SessionReq) => SessionRes.parse(await post("/api/session", req));
+/** Visiting any page with ?test=1 marks this browser as a tester, so its usage is left out of /stats. */
+export function isTestBrowser(): boolean {
+  try {
+    if (new URLSearchParams(location.search).get("test") === "1") localStorage.setItem("sb-test", "1");
+    return localStorage.getItem("sb-test") === "1";
+  } catch {
+    return false;
+  }
+}
+
+export const startSession = async (req: SessionReq) =>
+  SessionRes.parse(await post("/api/session", { ...req, test: isTestBrowser() || undefined }));
 
 export const createRoomApi = (req: { guestId: string; roomName: string; sport: string }) =>
   post<{ code: string; channelId: string; name: string; sport: string }>("/api/rooms", req);
